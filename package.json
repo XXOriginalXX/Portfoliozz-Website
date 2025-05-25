@@ -11,7 +11,7 @@
     "preview": "vite preview",
     "format.fix": "prettier --write .",
     "typecheck": "tsc",
-    "postinstall": "node postinstall.cjs"
+    
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
