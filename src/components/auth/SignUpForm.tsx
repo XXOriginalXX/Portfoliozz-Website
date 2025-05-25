@@ -11,7 +11,7 @@ import {
   signInWithPopup,
   updateProfile,
 } from "firebase/auth";
-import { auth } from "@/firebaseConfig"; // Adjust path if needed
+import { auth } from "../../firebaseconfig"; // Adjust path if needed
 
 // Zod schema for form validation
 const signUpSchema = z
