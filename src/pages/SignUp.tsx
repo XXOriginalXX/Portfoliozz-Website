@@ -1,7 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { SignUpForm } from "@/components/auth/SignUpForm";
-import { BackgroundImage } from "@/assets/BackgroundImage";
+import { SignUpForm } from "../components/auth/SignUpForm";
+import { BackgroundImage } from "../assets/BackgroundImage";
 
 const SignUp: React.FC = () => {
   return (

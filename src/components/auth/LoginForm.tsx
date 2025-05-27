@@ -2,7 +2,7 @@ import React from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 // Import Firebase auth and providers
 import {
@@ -10,7 +10,8 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
 } from "firebase/auth";
-import { auth } from "../../firebaseconfig"; // Adjust path if needed
+import { auth, db } from "../../firebaseconfig"; // Fixed import path
+import { doc, updateDoc, setDoc, getDoc } from "firebase/firestore";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -21,6 +22,8 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export const LoginForm: React.FC = () => {
+  const navigate = useNavigate(); // Add navigation hook
+  
   const {
     register,
     handleSubmit,
@@ -38,10 +41,21 @@ export const LoginForm: React.FC = () => {
   const onSubmit = async (data: LoginFormValues) => {
     try {
       // Sign in with email and password
-      await signInWithEmailAndPassword(auth, data.email, data.password);
+      const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
+      const user = userCredential.user;
+      
+      // Update last login time in Firestore
+      try {
+        await updateDoc(doc(db, 'users', user.uid), {
+          lastLogin: new Date()
+        });
+      } catch (updateError) {
+        console.log("Could not update last login time:", updateError);
+      }
+      
       console.log("Login successful!");
-      // Redirect or perform other actions after successful login
-      // For example, navigate to a dashboard: history.push('/dashboard');
+      // Navigate to home page after successful login
+      navigate('/');
     } catch (error: any) {
       console.error("Login error:", error.message);
       // Display error message to the user
@@ -49,7 +63,8 @@ export const LoginForm: React.FC = () => {
         type: "manual",
         message:
           error.code === "auth/user-not-found" ||
-          error.code === "auth/wrong-password"
+          error.code === "auth/wrong-password" ||
+          error.code === "auth/invalid-credential"
             ? "Invalid email or password"
             : error.message,
       });
@@ -63,12 +78,38 @@ export const LoginForm: React.FC = () => {
   const handleGoogleSignIn = async () => {
     const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      
+      // Check if user document exists, if not create it
+      const userDocRef = doc(db, 'users', user.uid);
+      const userDoc = await getDoc(userDocRef);
+      
+      if (!userDoc.exists()) {
+        // Create new user document
+        await setDoc(userDocRef, {
+          displayName: user.displayName || '',
+          email: user.email || '',
+          createdAt: new Date(),
+          lastLogin: new Date()
+        });
+      } else {
+        // Update last login time
+        await updateDoc(userDocRef, {
+          lastLogin: new Date()
+        });
+      }
+      
       console.log("Signed in with Google successfully!");
-      // Redirect or perform other actions after successful Google login
+      // Navigate to home page after successful Google login
+      navigate('/');
     } catch (error: any) {
       console.error("Google sign-in error:", error.message);
       // Handle Google sign-in errors
+      setError("email", {
+        type: "manual",
+        message: "Failed to sign in with Google. Please try again.",
+      });
     }
   };
 

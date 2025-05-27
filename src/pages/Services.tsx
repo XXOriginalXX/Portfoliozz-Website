@@ -1,112 +1,39 @@
 import Hero from '../components/Hero';
 import SectionTitle from '../components/SectionTitle';
 import ServiceCard from '../components/ServiceCard';
+import { useEffect, useState } from 'react';
+import { collection, getDocs, orderBy, query } from 'firebase/firestore';
+import { db } from '../firebaseconfig';
 
 const Services = () => {
-  const services = [
-    {
-      title: "Equity Intraday",
-      price: "1,000",
-      duration: "Month",
-      highlights: [
-        "Real-time stock market insights",
-        "Quick entry & exit-based trading strategies",
-        "2 to 4 high-probability intraday calls per day",
-        "Instant call delivery via WhatsApp/Telegram",
-        "Clear Stop Loss and Target in every call"
-      ],
-      whatsappNumber: "7592833517"
-    },
-    {
-      title: "Option Buy",
-      price: "1,000",
-      duration: "Month",
-      highlights: [
-        "Minimum Capital Requirement: ₹1,00,000",
-        "4 to 6 trades per week",
-        "Real-time trade alerts via WhatsApp/Telegram",
-        "Clear Entry, SL & Target levels in every trade"
-      ],
-      whatsappNumber: "7592833517"
-    },
-    {
-      title: "Option Sell (Using Strategies)",
-      price: "10,000",
-      duration: "Month",
-      highlights: [
-        "Minimum Capital Requirement: ₹5,00,000",
-        "4 to 6 trades per week",
-        "Real-time trade alerts via WhatsApp/Telegram",
-        "Clear Entry, SL & Target levels in every trade"
-      ],
-      whatsappNumber: "7592833517"
-    },
-    {
-      title: "Long-Term Portfolio Creation & Maintenance",
-      price: "15,000",
-      duration: "Month",
-      highlights: [
-        "Tailor-made portfolios for long-term wealth",
-        "Focus on high-quality, fundamentally strong stocks",
-        "Sector-wise allocation based on market trends",
-        "Periodic review and rebalancing for performance",
-        "Detailed reporting & ongoing advisory support"
-      ],
-      whatsappNumber: "7592833517"
-    },
-    {
-      title: "Multibagger",
-      price: "1,50,000",
-      duration: "Year",
-      highlights: [
-        "3 to 4 handpicked high-potential stocks",
-        "Minimum 2 years holding period",
-        "Potential to deliver 2x to 5x returns over time",
-        "Backed by deep fundamental research",
-        "Regular monitoring and long-term updates"
-      ],
-      whatsappNumber: "7592833517"
-    },
-    {
-      title: "Short Term Holding Stocks",
-      price: "6,000",
-      duration: "3 Months",
-      highlights: [
-        "Holding Period: Typically 2 to 8 weeks",
-        "6-8 trades per month",
-        "Based on technical setups and sectoral momentum",
-        "Potential for 8-20% movement in short span",
-        "Clear Entry, Stop Loss & Targets"
-      ],
-      whatsappNumber: "7592833517"
-    },
-    {
-      title: "Index Futures - High Risk High Reward",
-      price: "4,000",
-      duration: "2 Months",
-      highlights: [
-        "Trading Instrument: NIFTY & BANKNIFTY Futures",
-        "Risk Level: High (for risk-capable traders)",
-        "Trade Frequency: 4-6 trades per week",
-        "High-conviction trades with clear entry/exit logic",
-        "Real-time alerts via WhatsApp/Telegram"
-      ],
-      whatsappNumber: "7592833517"
-    },
-    {
-      title: "Commodity Trading",
-      price: "10,000",
-      duration: "3 Months",
-      highlights: [
-        "Instruments: Gold, Silver, Crude Oil, Natural Gas, Copper & more",
-        "Trade Type: Intraday and Positional",
-        "Frequency: 3-5 trades per week",
-        "Technically backed calls with defined risk parameters",
-        "Live market alerts via WhatsApp/Telegram"
-      ],
-      whatsappNumber: "7592833517"
-    }
-  ];
+  const [services, setServices] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        const q = query(collection(db, 'services'), orderBy('order', 'asc'));
+        const querySnapshot = await getDocs(q);
+        const servicesData = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setServices(servicesData);
+      } catch (error) {
+        console.error('Error fetching services:', error);
+        // Handle error gracefully - show empty array or error message
+        setServices([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchServices();
+  }, []);
+
+  if (loading) {
+    return <div className="flex justify-center items-center min-h-screen">Loading...</div>;
+  }
 
   return (
     <div>
@@ -124,17 +51,23 @@ const Services = () => {
           />
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {services.map((service, index) => (
-              <ServiceCard
-                key={index}
-                title={service.title}
-                price={service.price}
-                duration={service.duration}
-                highlights={service.highlights}
-                whatsappNumber={service.whatsappNumber}
-                bgColor={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
-              />
-            ))}
+            {services.length > 0 ? (
+              services.map((service, index) => (
+                <ServiceCard
+                  key={service.id} // Use service.id instead of index for better React performance
+                  title={service.title}
+                  price={service.price}
+                  duration={service.duration}
+                  highlights={service.highlights}
+                  whatsappNumber={service.whatsappNumber}
+                  bgColor={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
+                />
+              ))
+            ) : (
+              <div className="col-span-full text-center py-12">
+                <p className="text-gray-600">No services available at the moment.</p>
+              </div>
+            )}
           </div>
         </div>
       </section>
