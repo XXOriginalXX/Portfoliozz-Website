@@ -97,16 +97,24 @@ const Services = () => {
             <p className="text-xl mt-6">
               Your trust matters — and we're here to support you at every step of your trading journey.
             </p>
-            <button
-              onClick={() => {
-                const message = "Hi, I'm interested in learning more about your services. Can you provide more details?";
-                const whatsappUrl = `https://wa.me/7592833517?text=${encodeURIComponent(message)}`;
-                window.open(whatsappUrl, '_blank');
-              }}
-              className="mt-8 px-8 py-4 bg-accent hover:bg-accent/90 text-white rounded-md text-lg font-medium transition-all"
-            >
-              Contact Us Today
-            </button>
+            <div className="flex justify-center">
+              <button
+                onClick={() => {
+                  const message = "Hi, I'm interested in learning more about your services. Can you provide more details?";
+                  const whatsappUrl = `https://wa.me/7592833517?text=${encodeURIComponent(message)}`;
+                  window.open(whatsappUrl, '_blank');
+                }}
+                className="mt-8 px-6 py-3 flex items-center justify-center bg-green-500 hover:bg-green-600 text-white rounded-md text-lg font-medium transition-all gap-3"
+              >
+                <img
+                  src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg"
+                  alt="WhatsApp"
+                  className="w-6 h-6"
+                />
+                Contact us Today
+              </button>
+            </div>
+
           </div>
         </div>
       </section>

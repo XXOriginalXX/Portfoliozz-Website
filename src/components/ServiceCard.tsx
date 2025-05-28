@@ -51,7 +51,11 @@ const ServiceCard = ({
         onClick={handleWhatsAppClick}
         className="w-full py-3 px-4 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors flex items-center justify-center"
       >
-        <WhatsApp className="mr-2 h-5 w-5" />
+        <img
+          src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg"
+          alt="WhatsApp"
+          className="mr-2 h-5 w-5"
+        />
         <span>Inquire via WhatsApp</span>
       </button>
     </div>

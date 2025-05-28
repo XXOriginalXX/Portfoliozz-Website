@@ -35,9 +35,11 @@ const SplashScreen = () => {
               transition={{ duration: 0.5 }}
               className="mb-4"
             >
-              <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-accent flex items-center justify-center">
-                <span className="text-4xl font-serif font-bold text-white">P</span>
+              <div className="mb-4">
+                <img src="/logo.png" alt="Logo" className="w-40 h-auto mx-auto" />
               </div>
+
+
             </motion.div>
             <motion.h1
               initial={{ y: 20, opacity: 0 }}
