@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, ChevronDown, User } from 'lucide-react';
 import { signOut } from 'firebase/auth';
-import { auth } from '../firebaseConfig';
+import { auth } from '../firebaseconfig';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
