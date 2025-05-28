@@ -1,17 +1,31 @@
-import React from "react";
+import React, { useRef, useEffect } from "react";
 
 interface BackgroundImageProps {
   imageUrl?: string;
+  playbackSpeed?: number; // optional prop to control speed
 }
 
-export const BackgroundImage: React.FC<BackgroundImageProps> = ({ 
-  imageUrl = "https://images.unsplash.com/photo-1640459958548-56c1c6717a40?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+export const BackgroundImage: React.FC<BackgroundImageProps> = ({
+  imageUrl = "https://cdn.pixabay.com/video/2024/11/10/240752.mp4",
+  playbackSpeed = 0.4, // default slow speed 0.5x
 }) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.playbackRate = playbackSpeed;
+    }
+  }, [playbackSpeed]);
+
   return (
     <div className="relative h-full w-full overflow-hidden">
-      <img 
-        src={imageUrl} 
-        alt="Sports background"
+      <video
+        ref={videoRef}
+        src={imageUrl}
+        autoPlay
+        muted
+        loop
+        playsInline
         className="h-full w-full object-cover"
         style={{
           position: "absolute",
@@ -19,7 +33,7 @@ export const BackgroundImage: React.FC<BackgroundImageProps> = ({
           left: 0,
           right: 0,
           bottom: 0,
-          margin: 0
+          margin: 0,
         }}
       />
     </div>

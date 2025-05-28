@@ -22,8 +22,8 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export const LoginForm: React.FC = () => {
-  const navigate = useNavigate(); // Add navigation hook
-  
+  const navigate = useNavigate();
+
   const {
     register,
     handleSubmit,
@@ -40,11 +40,9 @@ export const LoginForm: React.FC = () => {
 
   const onSubmit = async (data: LoginFormValues) => {
     try {
-      // Sign in with email and password
       const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
       const user = userCredential.user;
-      
-      // Update last login time in Firestore
+
       try {
         await updateDoc(doc(db, 'users', user.uid), {
           lastLogin: new Date()
@@ -52,13 +50,13 @@ export const LoginForm: React.FC = () => {
       } catch (updateError) {
         console.log("Could not update last login time:", updateError);
       }
-      
+
       console.log("Login successful!");
-      // Navigate to home page after successful login
-      navigate('/');
+      // ✅ Redirect to homepage
+      navigate('/', { replace: true });
+
     } catch (error: any) {
       console.error("Login error:", error.message);
-      // Display error message to the user
       setError("email", {
         type: "manual",
         message:
@@ -70,48 +68,50 @@ export const LoginForm: React.FC = () => {
       });
       setError("password", {
         type: "manual",
-        message: "", // Clear password error if email is the main issue
+        message: "",
       });
     }
   };
 
   const handleGoogleSignIn = async () => {
-    const provider = new GoogleAuthProvider();
+  const provider = new GoogleAuthProvider();
+  try {
+    const result = await signInWithPopup(auth, provider);
+    const user = result.user;
+
+    const userDocRef = doc(db, 'users', user.uid);
+
     try {
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-      
-      // Check if user document exists, if not create it
-      const userDocRef = doc(db, 'users', user.uid);
       const userDoc = await getDoc(userDocRef);
-      
+
       if (!userDoc.exists()) {
-        // Create new user document
         await setDoc(userDocRef, {
           displayName: user.displayName || '',
           email: user.email || '',
           createdAt: new Date(),
-          lastLogin: new Date()
+          lastLogin: new Date(),
         });
       } else {
-        // Update last login time
         await updateDoc(userDocRef, {
-          lastLogin: new Date()
+          lastLogin: new Date(),
         });
       }
-      
-      console.log("Signed in with Google successfully!");
-      // Navigate to home page after successful Google login
-      navigate('/');
-    } catch (error: any) {
-      console.error("Google sign-in error:", error.message);
-      // Handle Google sign-in errors
-      setError("email", {
-        type: "manual",
-        message: "Failed to sign in with Google. Please try again.",
-      });
+    } catch (firestoreError) {
+      console.error("Firestore error while updating/creating user document:", firestoreError);
+      // Do NOT throw here; ignore Firestore errors so sign-in remains successful
     }
-  };
+
+    console.log("Signed in with Google successfully!");
+    navigate('/', { replace: true });
+  } catch (error: any) {
+    console.error("Google sign-in error:", error.message);
+    setError("email", {
+      type: "manual",
+      message: "Failed to sign in with Google. Please try again.",
+    });
+  }
+};
+
 
   return (
     <div className="w-full max-w-md">
@@ -126,7 +126,7 @@ export const LoginForm: React.FC = () => {
           className="text-gray-600"
           style={{ fontFamily: "'Inter', sans-serif" }}
         >
-          Welcome back! Please enter your details.
+          Welcome back to Portfoliozz! Please enter your details.
         </p>
       </div>
 

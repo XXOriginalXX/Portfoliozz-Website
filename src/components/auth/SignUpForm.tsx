@@ -69,7 +69,7 @@ export const SignUpForm: React.FC = () => {
 
       console.log("Sign up successful!", userCredential.user);
       // Redirect to a dashboard or login page after successful sign-up
-      navigate("/dashboard");
+      navigate('/', { replace: true });
     } catch (error: any) {
       console.error("Sign up error:", error.message);
       // Display specific error messages based on Firebase error codes
@@ -100,7 +100,7 @@ export const SignUpForm: React.FC = () => {
       await signInWithPopup(auth, provider);
       console.log("Signed up with Google successfully!");
       // Redirect after successful Google sign-up
-      navigate("/dashboard");
+      navigate('/', { replace: true });
     } catch (error: any) {
       console.error("Google sign-up error:", error.message);
       // Handle Google sign-up errors
@@ -127,7 +127,6 @@ export const SignUpForm: React.FC = () => {
           Sign up to get started with your new account.
         </p>
       </div>
-
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <div>
           <div className="mb-2 font-medium">Full Name</div>

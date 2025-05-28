@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -16,7 +16,10 @@ import AOS from 'aos';
 import 'aos/dist/aos.css';
 import './index.css';
 
-function App() {
+function AppContent() {
+  const location = useLocation();
+  const hideNavAndFooter = location.pathname === '/login' || location.pathname === '/signup';
+
   useEffect(() => {
     AOS.init({
       duration: 800,
@@ -26,11 +29,11 @@ function App() {
   }, []);
 
   return (
-    <Router>
+    <>
       <ScrollToTop />
       <SplashScreen />
       <div className="app font-poppins text-gray-800">
-        <Navbar />
+        {!hideNavAndFooter && <Navbar />}
         <main className="min-h-screen">
           <Routes>
             <Route path="/" element={<Home />} />
@@ -43,8 +46,16 @@ function App() {
             <Route path="/signup" element={<SignUp />} />
           </Routes>
         </main>
-        <Footer />
+        {!hideNavAndFooter && <Footer />}
       </div>
+    </>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <AppContent />
     </Router>
   );
 }
