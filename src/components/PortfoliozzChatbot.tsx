@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Bot, User, TrendingUp, IndianRupee } from 'lucide-react';
+import { MessageCircle, X, Send, Bot, User, TrendingUp, IndianRupee, Search } from 'lucide-react';
 
 const PortfoliozzChatbot = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -34,7 +34,7 @@ const PortfoliozzChatbot = () => {
   }, [isOpen]);
 
   const portfoliozzContext = `
-You are Portfoliozz AI Assistant, representing Portfoliozz - a SEBI-registered research analyst firm specializing in the Indian stock market. Here's key information about Portfoliozz:
+You are Portfoliozz AI Assistant, representing Portfoliozz - a SEBI-registered research analyst firm specializing in the Indian stock market. 
 
 ABOUT PORTFOLIOZZ:
 - SEBI-registered research analyst focused on Indian stock market
@@ -69,30 +69,133 @@ SERVICES OFFERED:
 
 CONTACT: WhatsApp - 7592833517
 
-IMPORTANT FORMATTING RULES:
-- Never use asterisks (*) or markdown formatting in responses
-- Use clear, professional language without special characters
-- Format lists with simple dashes or numbers
-- Keep responses clean and readable
+STOCK ANALYSIS FRAMEWORK:
+When users ask about specific companies or stocks, provide comprehensive analysis in this structured format:
 
-When users ask about specific companies or stocks, provide comprehensive analysis covering:
-1. Company Introduction
-2. Financial Ratios (P/E, P/B, ROE, ROA, Debt-to-Equity, etc.)
-3. Quarterly Results Analysis
-4. Cash Flow, Debt, and Borrowings Analysis
-5. Promoter Holding Information
-6. Recent Corporate Updates
+**INVESTMENT ANALYSIS - [COMPANY NAME]**
 
-Always maintain a professional, knowledgeable tone and focus on the Indian stock market context.
+**Current Market Position**
+- Current stock price and market cap
+- Recent performance (1-day, 1-week, 1-month, 1-year changes)
+- Trading volume analysis
+
+**Financial Performance Highlights**
+- Revenue & Profitability (Annual and recent quarterly)
+- Key Financial Ratios:
+  * Price-to-Earnings Ratio (P/E)
+  * Price-to-Book Ratio (P/B)
+  * Return on Equity (ROE)
+  * Return on Assets (ROA)
+  * Debt-to-Equity Ratio
+  * Current Ratio
+  * EBITDA Margins
+- Dividend Yield and payout history
+
+**Growth Trajectory & Business Analysis**
+- Revenue growth trends
+- Market position and competitive advantages
+- Key business segments performance
+- Recent corporate developments
+- Management quality assessment
+
+**Technical Analysis**
+- Support and resistance levels
+- Moving averages (50-day, 200-day)
+- RSI and momentum indicators
+- Volume trends
+
+**Investment Considerations**
+**Positives:**
+- List 3-4 key strengths
+**Concerns:**
+- List 3-4 potential risks
+
+**My Professional Recommendation**
+- Clear rating: BUY/HOLD/SELL with rationale
+- Entry Strategy with specific price levels
+- Risk Management guidelines
+- Target price and time horizon
+- Portfolio allocation suggestion
+
+IMPORTANT GUIDELINES:
+- Act as a personal financial advisor
+- Provide specific, actionable insights
+- Include exact numbers and ratios when discussing financials
+- Give clear buy/sell/hold recommendations with reasoning
+- Suggest specific entry points and stop-loss levels
+- Consider both fundamental and technical aspects
+- Address risk management
+- Keep the tone professional yet accessible
+- Focus only on the requested company - no unnecessary comparisons
+- Use rupee symbol (₹) for Indian prices
+- NEVER use asterisks (*) or any markdown formatting (**, *, ##, etc.) in responses
+- Format section headers and emphasis using plain text only
+- Use clear formatting with line breaks and spacing instead of special characters
+- Maintain SEBI compliance in all recommendations
+- Do not put any disclaimers in the response
+
+Remember: You are providing analysis as a SEBI-registered research analyst would, with proper disclaimers about market risks.
 `;
+
+  const detectStockQuery = (message) => {
+    const analysisKeywords = ['analyse', 'analyze', 'analysis'];
+    const stockKeywords = [
+      'stock', 'share', 'company', 'buy', 'sell', 'hold', 
+      'recommendation', 'target', 'price', 'invest', 'trading', 'market',
+      'financial', 'ratio', 'dividend', 'earnings', 'revenue', 'profit'
+    ];
+    
+    const hasAnalysisKeyword = analysisKeywords.some(keyword => 
+      message.toLowerCase().includes(keyword)
+    );
+    
+    const hasStockKeyword = stockKeywords.some(keyword => 
+      message.toLowerCase().includes(keyword)
+    );
+    
+    return hasAnalysisKeyword || hasStockKeyword;
+  };
 
   const generateBotResponse = async (userMessage) => {
     try {
-      const prompt = `${portfoliozzContext}
+      const isStockQuery = detectStockQuery(userMessage);
+      const isAnalysisQuery = userMessage.toLowerCase().includes('analyse') || 
+                             userMessage.toLowerCase().includes('analyze') || 
+                             userMessage.toLowerCase().includes('analysis');
+      
+      let prompt;
+      if (isAnalysisQuery) {
+        // Comprehensive analysis without service promotion
+        prompt = `${portfoliozzContext}
 
 User Query: ${userMessage}
 
-Please provide a comprehensive response as the Portfoliozz AI Assistant. If the user is asking about a specific company or stock, make sure to cover the key financial aspects mentioned in the context. Keep responses informative but concise, and always maintain the perspective of a SEBI-registered research analyst focused on the Indian market.`;
+This is a request for comprehensive stock analysis. Provide detailed investment analysis following the structured format outlined in the context. Act as a professional financial advisor and give specific, actionable recommendations with clear reasoning.
+
+Do NOT include any service promotions, subscription offers, or contact information in the response. Focus purely on the investment analysis and recommendations.
+
+Important: Provide specific numbers, ratios, and price levels where applicable. Give clear BUY/HOLD/SELL recommendations with entry points and risk management guidelines.`;
+      } else if (isStockQuery) {
+        // General stock query with subtle service mention
+        prompt = `${portfoliozzContext}
+
+User Query: ${userMessage}
+
+This appears to be a stock/investment related query. Provide helpful insights and if appropriate, gently mention our services that could help with their investment needs.
+
+For comprehensive stock analysis, guide users to use "analyse [company name]" format.
+
+Provide relevant insights with professional recommendations where applicable.`;
+      } else {
+        // General query
+        prompt = `${portfoliozzContext}
+
+User Query: ${userMessage}
+
+Please provide a helpful response as the Portfoliozz AI Assistant. Focus on how our services can help the user or provide general market insights as appropriate.
+
+Tip: For detailed stock analysis, suggest users to type "analyse [company name]" for comprehensive investment insights.`;
+      }
 
       const response = await fetch(GEMINI_API_URL, {
         method: 'POST',
@@ -110,10 +213,10 @@ Please provide a comprehensive response as the Portfoliozz AI Assistant. If the 
             }
           ],
           generationConfig: {
-            temperature: 0.7,
+            temperature: 0.3,
             topK: 40,
             topP: 0.95,
-            maxOutputTokens: 1024,
+            maxOutputTokens: 2048,
           }
         })
       });
@@ -125,7 +228,20 @@ Please provide a comprehensive response as the Portfoliozz AI Assistant. If the 
       const data = await response.json();
       
       if (data.candidates && data.candidates[0] && data.candidates[0].content) {
-        return data.candidates[0].content.parts[0].text;
+        let botResponse = data.candidates[0].content.parts[0].text;
+        
+        // Remove all markdown formatting
+        botResponse = botResponse
+          .replace(/\*\*(.*?)\*\*/g, '$1')  // Remove bold markdown **text**
+          .replace(/\*(.*?)\*/g, '$1')      // Remove italic markdown *text*
+          .replace(/#{1,6}\s/g, '')         // Remove header markdown ### 
+          .replace(/^\s*[\*\-\+]\s/gm, '• ') // Replace markdown bullets with bullet points
+          .replace(/^\s*\d+\.\s/gm, '')     // Remove numbered list markdown
+          .trim();
+        
+        
+        
+        return botResponse;
       } else {
         throw new Error('Invalid response format from Gemini API');
       }
@@ -244,7 +360,7 @@ Please provide a comprehensive response as the Portfoliozz AI Assistant. If the 
                   <div className="flex items-start space-x-3">
                     {message.isBot && (
                       <div className="bg-gradient-to-br from-slate-100 to-slate-200 rounded-full p-2 mt-1">
-                        <IndianRupee className="h-4 w-4 text-[#1e3a8a]" />
+                        <Search className="h-4 w-4 text-[#1e3a8a]" />
                       </div>
                     )}
                     {!message.isBot && (
@@ -296,7 +412,7 @@ Please provide a comprehensive response as the Portfoliozz AI Assistant. If the 
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Ask about stocks, market analysis, or our services..."
+                placeholder="Type 'analyse [company name]' for detailed stock analysis or ask general questions..."
                 className="flex-1 resize-none border-2 border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a8a] focus:border-[#1e3a8a] transition-all duration-200 bg-slate-50/50 focus:bg-white"
                 rows="1"
                 style={{ minHeight: '44px', maxHeight: '120px' }}
