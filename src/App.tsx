@@ -15,6 +15,7 @@ import SplashScreen from './components/SplashScreen';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
 import './index.css';
+import PortfoliozzChatbot from './components/PortfoliozzChatbot';
 
 function AppContent() {
   const location = useLocation();
