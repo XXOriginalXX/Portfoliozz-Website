@@ -47,6 +47,7 @@ function AppContent() {
           </Routes>
         </main>
         {!hideNavAndFooter && <Footer />}
+        <PortfoliozzChatbot />
       </div>
     </>
   );
