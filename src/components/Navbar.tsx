@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, ChevronDown, User, Newspaper } from 'lucide-react';
+import { Menu, X, ChevronDown, User } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebaseconfig';
 
@@ -72,8 +72,7 @@ const Navbar = () => {
                 </div>
               )}
             </div>
-            <Link to="/news" className={`text-sm font-medium ${scrolled ? 'text-gray-700 hover:text-primary' : 'text-white hover:text-accent'} flex items-center`}>
-              <Newspaper className="h-4 w-4 mr-1" />
+            <Link to="/news" className={`text-sm font-medium ${scrolled ? 'text-gray-700 hover:text-primary' : 'text-white hover:text-accent'}`}>
               Market News
             </Link>
             <Link to="/terms" className={`text-sm font-medium ${scrolled ? 'text-gray-700 hover:text-primary' : 'text-white hover:text-accent'}`}>Terms</Link>
@@ -125,8 +124,8 @@ const Navbar = () => {
               <Link to="/about" className="text-sm font-medium px-3 py-2 text-gray-700 hover:bg-gray-100">About Us</Link>
               <Link to="/core-values" className="text-sm font-medium px-3 py-2 text-gray-700 hover:bg-gray-100">Core Values</Link>
               <Link to="/services" className="text-sm font-medium px-3 py-2 text-gray-700 hover:bg-gray-100">Services</Link>
-              <Link to="/news" className="text-sm font-medium px-3 py-2 text-gray-700 hover:bg-gray-100 flex items-center">
-               Market News
+              <Link to="/news" className="text-sm font-medium px-3 py-2 text-gray-700 hover:bg-gray-100">
+                Market News
               </Link>
               <Link to="/terms" className="text-sm font-medium px-3 py-2 text-gray-700 hover:bg-gray-100">Terms</Link>
               <Link to="/complaint" className="text-sm font-medium px-3 py-2 text-gray-700 hover:bg-gray-100">Complaint</Link>
