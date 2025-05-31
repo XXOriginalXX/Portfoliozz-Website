@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Newspaper, TrendingUp, Clock, ArrowUpRight, AlertCircle } from 'lucide-react';
+import { TrendingUp, Clock, ArrowUpRight, AlertCircle, RefreshCw } from 'lucide-react';
+import Hero from '../components/Hero';
 
 const News = () => {
   const [marketData, setMarketData] = useState({
@@ -12,122 +13,111 @@ const News = () => {
   const [error, setError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
 
-  // Multiple CORS proxy options
-  const PROXY_URLS = [
-    'https://cors-anywhere.herokuapp.com/',
-    'https://api.allorigins.win/raw?url=',
-    'https://corsproxy.io/?',
-    'https://api.codetabs.com/v1/proxy?quest='
-  ];
-
-  // Try multiple proxy URLs to find one that works
-  const tryProxyFetch = async (url) => {
-    for (const proxy of PROXY_URLS) {
-      try {
-        const proxyUrl = proxy + encodeURIComponent(url);
-        const response = await fetch(proxyUrl);
-        if (response.ok) {
-          return await response.json();
-        }
-      } catch (err) {
-        console.log(`Proxy ${proxy} failed for ${url}`);
-        continue;
-      }
-    }
-    throw new Error('All proxies failed');
-  };
-
-  // Fetch market data using Yahoo Finance API
+  // Fetch market data using multiple approaches
   const fetchMarketData = async () => {
     try {
       const symbols = [
         { symbol: '^BSESN', name: 'sensex' },
-        { symbol: '^NSEI', name: 'nifty' },
+        { symbol: '^NSEI', name: 'nifty' }, 
         { symbol: '^NSEBANK', name: 'bankNifty' }
       ];
 
       const promises = symbols.map(async ({ symbol, name }) => {
         try {
-          // Try Yahoo Finance chart API first
-          const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`;
-          let data = await tryProxyFetch(yahooUrl);
-          
-          if (data.chart?.result?.[0]) {
-            const result = data.chart.result[0];
-            const meta = result.meta;
-            const currentPrice = meta.regularMarketPrice || meta.previousClose;
-            const previousClose = meta.previousClose;
-            const change = currentPrice - previousClose;
-            const changePercent = (change / previousClose) * 100;
+          // Multiple API approaches with timeout
+          const approaches = [
+            // Approach 1: AllOrigins with timeout
+            async () => {
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 8000);
+              
+              try {
+                const proxyUrl = 'https://api.allorigins.win/get?url=';
+                const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`;
+                const response = await fetch(proxyUrl + encodeURIComponent(yahooUrl), {
+                  signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+                
+                const proxyData = await response.json();
+                const data = JSON.parse(proxyData.contents);
+                
+                if (data.chart?.result?.[0]) {
+                  const result = data.chart.result[0];
+                  const meta = result.meta;
+                  const currentPrice = meta.regularMarketPrice || meta.previousClose;
+                  const previousClose = meta.previousClose;
+                  const change = currentPrice - previousClose;
+                  const changePercent = (change / previousClose) * 100;
+                  
+                  return {
+                    name,
+                    value: currentPrice?.toFixed(2) || 'N/A',
+                    change: change > 0 ? `+${change.toFixed(2)}` : change.toFixed(2),
+                    percent: `${change > 0 ? '+' : ''}${changePercent.toFixed(2)}%`,
+                    isPositive: change >= 0
+                  };
+                }
+                throw new Error('No valid data found');
+              } finally {
+                clearTimeout(timeoutId);
+              }
+            },
             
-            return {
-              name,
-              value: currentPrice?.toFixed(2) || 'N/A',
-              change: change > 0 ? `+${change.toFixed(2)}` : change.toFixed(2),
-              percent: `${change > 0 ? '+' : ''}${changePercent.toFixed(2)}%`,
-              isPositive: change >= 0
-            };
-          }
-          
-          // If chart API fails, try quote API
-          const quoteUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbol}`;
-          data = await tryProxyFetch(quoteUrl);
-          
-          const quote = data.quoteResponse?.result?.[0];
-          if (quote) {
-            const currentPrice = quote.regularMarketPrice;
-            const previousClose = quote.regularMarketPreviousClose;
-            const change = quote.regularMarketChange;
-            const changePercent = quote.regularMarketChangePercent;
-            
-            return {
-              name,
-              value: currentPrice?.toFixed(2) || 'N/A',
-              change: change > 0 ? `+${change.toFixed(2)}` : change?.toFixed(2) || '0.00',
-              percent: `${changePercent > 0 ? '+' : ''}${changePercent?.toFixed(2) || '0.00'}%`,
-              isPositive: change >= 0
-            };
-          }
-          
-          throw new Error('No valid data found');
-        } catch (err) {
-          console.error(`Error fetching ${name}:`, err);
-          
-          // Try alternative data source (using a free API)
-          try {
-            const freeApiUrl = `https://api.twelvedata.com/quote?symbol=${symbol}&apikey=demo`;
-            const altData = await tryProxyFetch(freeApiUrl);
-            
-            if (altData && altData.price) {
-              return {
-                name,
-                value: parseFloat(altData.price).toFixed(2),
-                change: altData.change ? `${altData.change > 0 ? '+' : ''}${parseFloat(altData.change).toFixed(2)}` : '',
-                percent: altData.percent_change ? `${altData.percent_change > 0 ? '+' : ''}${parseFloat(altData.percent_change).toFixed(2)}%` : '',
-                isPositive: altData.change >= 0
-              };
+            // Approach 2: ThingProxy
+            async () => {
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 8000);
+              
+              try {
+                const proxyUrl = 'https://thingproxy.freeboard.io/fetch/';
+                const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`;
+                const response = await fetch(proxyUrl + yahooUrl, {
+                  signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+                
+                const data = await response.json();
+                
+                if (data.chart?.result?.[0]) {
+                  const result = data.chart.result[0];
+                  const meta = result.meta;
+                  const currentPrice = meta.regularMarketPrice || meta.previousClose;
+                  const previousClose = meta.previousClose;
+                  const change = currentPrice - previousClose;
+                  const changePercent = (change / previousClose) * 100;
+                  
+                  return {
+                    name,
+                    value: currentPrice?.toFixed(2) || 'N/A',
+                    change: change > 0 ? `+${change.toFixed(2)}` : change.toFixed(2),
+                    percent: `${change > 0 ? '+' : ''}${changePercent.toFixed(2)}%`,
+                    isPositive: change >= 0
+                  };
+                }
+                throw new Error('No valid data found');
+              } finally {
+                clearTimeout(timeoutId);
+              }
             }
-          } catch (altErr) {
-            console.error(`Alternative API failed for ${name}:`, altErr);
+          ];
+
+          // Try each approach
+          for (const approach of approaches) {
+            try {
+              return await approach();
+            } catch (err) {
+              console.log(`Approach failed for ${name}:`, err.message);
+              continue;
+            }
           }
           
-          throw err;
-        }
-      });
-
-      const results = await Promise.allSettled(promises);
-      
-      const newMarketData = {};
-      let successCount = 0;
-      
-      results.forEach((result, index) => {
-        const symbolInfo = symbols[index];
-        if (result.status === 'fulfilled' && result.value) {
-          newMarketData[result.value.name] = result.value;
-          successCount++;
-        } else {
-          newMarketData[symbolInfo.name] = {
-            value: 'Updating...',
+          throw new Error(`All approaches failed for ${name}`);
+        } catch (err) {
+          console.error(`Failed to fetch ${name}:`, err);
+          return {
+            name,
+            value: 'Error',
             change: '',
             percent: '',
             isPositive: true
@@ -135,201 +125,311 @@ const News = () => {
         }
       });
 
-      setMarketData(newMarketData);
+      const results = await Promise.allSettled(promises);
+      const newMarketData = {};
       
-      if (successCount === 0) {
-        throw new Error('All market data requests failed');
-      } else if (successCount < symbols.length) {
-        setError('Some market data temporarily unavailable. Retrying...');
-      } else {
-        setError(null);
+      results.forEach((result) => {
+        if (result.status === 'fulfilled' && result.value) {
+          newMarketData[result.value.name] = result.value;
+        }
+      });
+
+      if (Object.keys(newMarketData).length > 0) {
+        setMarketData(newMarketData);
       }
     } catch (err) {
       console.error('Error fetching market data:', err);
-      setError('Market data services are temporarily unavailable. Using cached data...');
-      
-      // Try one more alternative approach
-      try {
-        await fetchMarketDataAlternative();
-      } catch (altErr) {
-        setMarketData({
-          sensex: { value: 'Service Unavailable', change: '', percent: '', isPositive: true },
-          nifty: { value: 'Service Unavailable', change: '', percent: '', isPositive: true },
-          bankNifty: { value: 'Service Unavailable', change: '', percent: '', isPositive: true }
-        });
-      }
+      setMarketData({
+        sensex: { value: 'Error', change: '', percent: '', isPositive: true },
+        nifty: { value: 'Error', change: '', percent: '', isPositive: true },
+        bankNifty: { value: 'Error', change: '', percent: '', isPositive: true }
+      });
     }
   };
 
-  // Alternative market data fetching method
-  const fetchMarketDataAlternative = async () => {
-    try {
-      // Try using a different financial data API
-      const alphaVantageKey = 'demo'; // Replace with actual key for production
-      const symbols = ['BSE', 'NSE'];
-      
-      for (const symbol of symbols) {
-        try {
-          const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${alphaVantageKey}`;
-          const response = await fetch(`${PROXY_URL}${encodeURIComponent(url)}`);
-          
-          if (response.ok) {
-            const data = await response.json();
-            console.log('Alpha Vantage data:', data);
-            // Process the data if successful
-          }
-        } catch (err) {
-          console.log('Alpha Vantage failed for', symbol);
-        }
-      }
-    } catch (err) {
-      console.error('Alternative market data fetch failed:', err);
-      throw err;
-    }
+  // Filter function to check if news is stock market related
+  const isStockMarketRelated = (title, description) => {
+    const stockMarketKeywords = [
+      // Market terms
+      'stock', 'share', 'equity', 'market', 'trading', 'trader', 'investor', 'investment',
+      'sensex', 'nifty', 'bse', 'nse', 'index', 'indices',
+      // Financial terms
+      'bull', 'bear', 'rally', 'correction', 'volatility', 'volume', 'turnover',
+      'ipo', 'listing', 'demat', 'broker', 'portfolio', 'dividend', 'bonus',
+      // Company/sector terms
+      'earnings', 'quarterly', 'results', 'profit', 'revenue', 'growth',
+      'sector', 'stocks', 'shares', 'companies', 'corporate',
+      // Trading terms
+      'buy', 'sell', 'bid', 'ask', 'price', 'value', 'valuation',
+      'analyst', 'recommendation', 'target', 'rating',
+      // Market movements
+      'rise', 'fall', 'gain', 'loss', 'up', 'down', 'surge', 'drop', 'climb'
+    ];
+
+    const content = (title + ' ' + description).toLowerCase();
+    return stockMarketKeywords.some(keyword => content.includes(keyword));
   };
 
-  // Fetch news data from RSS feeds
+  // Fetch news using multiple RSS parsing services and methods
   const fetchNewsData = async () => {
     try {
-      let newsData = [];
-
-      // RSS to JSON converter services (multiple options)
-      const rssFeeds = [
+      setError(null);
+      
+      // Multiple RSS feed sources with various parsing methods
+      const newsSources = [
+        // Method 1: Direct RSS feeds (some may work without CORS)
         {
+          type: 'direct_rss',
           url: 'https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms',
-          source: 'Economic Times'
+          source: 'Economic Times Markets',
+          category: 'Stock Market'
         },
         {
+          type: 'direct_rss',
           url: 'https://www.moneycontrol.com/rss/marketsnews.xml',
-          source: 'Moneycontrol'
+          source: 'Moneycontrol Markets', 
+          category: 'Stock Market'
+        },
+        
+        // Method 2: RSS2JSON alternatives
+        {
+          type: 'rss_api',
+          url: 'https://api.rss2json.com/v1/api.json?rss_url=https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms&count=15&api_key=YOUR_API_KEY',
+          source: 'ET Markets (API)',
+          category: 'Stock Market'
+        },
+        
+        // Method 3: AllOrigins proxy for RSS
+        {
+          type: 'proxy_rss',
+          rss_url: 'https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms',
+          source: 'ET Markets (Proxy)',
+          category: 'Stock Market'
         },
         {
-          url: 'https://www.business-standard.com/rss/markets-106.rss',
-          source: 'Business Standard'
+          type: 'proxy_rss',
+          rss_url: 'https://www.moneycontrol.com/rss/marketsnews.xml',
+          source: 'Moneycontrol (Proxy)',
+          category: 'Stock Market'
         },
         {
-          url: 'https://feeds.feedburner.com/NDTV-LatestNews',
-          source: 'NDTV Business'
+          type: 'proxy_rss',
+          rss_url: 'https://www.business-standard.com/rss/markets-106.rss',
+          source: 'Business Standard (Proxy)',
+          category: 'Stock Market'
         },
         {
-          url: 'https://www.livemint.com/rss/markets',
-          source: 'LiveMint'
+          type: 'proxy_rss',
+          rss_url: 'https://www.livemint.com/rss/markets',
+          source: 'Mint Markets (Proxy)',
+          category: 'Stock Market'
+        },
+        
+        // Method 4: Alternative RSS converters
+        {
+          type: 'alt_api',
+          url: 'https://feed2json.org/convert?url=https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms',
+          source: 'ET Markets (Alt)',
+          category: 'Stock Market'
         }
       ];
 
-      for (const feed of rssFeeds) {
+      let allNews = [];
+      let successfulFetches = 0;
+
+      for (const source of newsSources) {
         try {
-          // Try multiple RSS to JSON services
-          const rssServices = [
-            `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed.url)}&count=8`,
-            `https://rss2json.com/api.json?rss_url=${encodeURIComponent(feed.url)}&count=8`,
-            `https://api.allorigins.win/get?url=${encodeURIComponent('https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(feed.url) + '&count=8')}`
-          ];
+          console.log(`Fetching from ${source.source}...`);
           
-          for (const serviceUrl of rssServices) {
-            try {
-              const data = await tryProxyFetch(serviceUrl);
+          let data;
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+          
+          try {
+            if (source.type === 'direct_rss') {
+              // Try direct RSS fetch (might work for some feeds)
+              const response = await fetch(source.url, {
+                signal: controller.signal,
+                mode: 'cors'
+              });
               
-              // Handle different response formats
-              let parsedData = data;
-              if (data.contents) {
-                parsedData = JSON.parse(data.contents);
+              if (response.ok) {
+                const xmlText = await response.text();
+                data = await parseRSSFromXML(xmlText);
+              } else {
+                throw new Error('Direct fetch failed');
               }
               
-              if (parsedData.status === 'ok' && parsedData.items && parsedData.items.length > 0) {
-                const feedNews = parsedData.items.slice(0, 6).map(item => ({
-                  category: 'Market News',
-                  title: item.title || 'No title available',
-                  description: item.description 
-                    ? item.description.replace(/<[^>]*>/g, '').substring(0, 150) + '...' 
-                    : item.title || 'No description available',
-                  time: formatTimeAgo(new Date(item.pubDate)),
-                  source: feed.source,
-                  link: item.link || '#'
-                }));
+            } else if (source.type === 'rss_api') {
+              // RSS2JSON API (without API key, limited requests)
+              const url = source.url.replace('&api_key=YOUR_API_KEY', '');
+              const response = await fetch(url, { signal: controller.signal });
+              data = await response.json();
+              
+            } else if (source.type === 'proxy_rss') {
+              // AllOrigins proxy approach
+              const proxyUrl = 'https://api.allorigins.win/get?url=';
+              const response = await fetch(proxyUrl + encodeURIComponent(source.rss_url), {
+                signal: controller.signal
+              });
+              const proxyData = await response.json();
+              
+              if (proxyData.contents) {
+                data = await parseRSSFromXML(proxyData.contents);
+              }
+              
+            } else if (source.type === 'alt_api') {
+              // Alternative RSS converter
+              const response = await fetch(source.url, { signal: controller.signal });
+              data = await response.json();
+              
+              // Convert feed2json format to rss2json format
+              if (data.items) {
+                data = {
+                  status: 'ok',
+                  items: data.items.map(item => ({
+                    title: item.title,
+                    description: item.content_html || item.content_text || item.summary,
+                    pubDate: item.date_published,
+                    link: item.url,
+                    guid: item.id
+                  }))
+                };
+              }
+            }
+            
+            clearTimeout(timeoutId);
+            
+          } catch (fetchError) {
+            clearTimeout(timeoutId);
+            throw fetchError;
+          }
+          
+          if (data && ((data.status === 'ok' && data.items) || (data.items && Array.isArray(data.items)))) {
+            const sourceNews = data.items
+              .filter(item => {
+                if (!item.title || item.title.trim() === '') return false;
                 
-                newsData = [...newsData, ...feedNews];
-                break; // Break inner loop on success
-              }
-            } catch (serviceErr) {
-              console.log(`RSS service failed for ${feed.source}:`, serviceErr);
-              continue;
+                const title = item.title.trim();
+                const description = item.description ? cleanDescription(item.description, 300) : '';
+                
+                // Filter for stock market related content
+                return isStockMarketRelated(title, description);
+              })
+              .slice(0, 10)
+              .map(item => ({
+                category: source.category,
+                title: item.title.trim(),
+                description: item.description 
+                  ? cleanDescription(item.description, 200)
+                  : item.title.trim(),
+                time: formatTimeAgo(new Date(item.pubDate || item.date_published)),
+                source: source.source,
+                link: item.link || item.url || item.guid || '#',
+                pubDate: new Date(item.pubDate || item.date_published || Date.now())
+              }));
+            
+            if (sourceNews.length > 0) {
+              allNews = [...allNews, ...sourceNews];
+              successfulFetches++;
+              console.log(`Successfully fetched ${sourceNews.length} articles from ${source.source}`);
             }
+          } else {
+            console.warn(`No valid data from ${source.source}:`, data);
           }
           
-          if (newsData.length >= 20) break; // Stop once we have enough news
-        } catch (feedErr) {
-          console.log(`RSS feed ${feed.source} failed:`, feedErr);
-          continue;
+        } catch (sourceErr) {
+          console.error(`Failed to fetch from ${source.source}:`, sourceErr.message);
         }
       }
 
-      // If RSS feeds fail, try generating sample financial news structure
-      if (newsData.length === 0) {
-        try {
-          // Try a simple financial news API
-          const newsApiOptions = [
-            `https://finnhub.io/api/v1/news?category=general&token=demo`,
-            `https://newsapi.org/v2/everything?q=stock+market+india&language=en&sortBy=publishedAt&pageSize=15&apiKey=demo`
-          ];
-          
-          for (const apiUrl of newsApiOptions) {
-            try {
-              const data = await tryProxyFetch(apiUrl);
-              
-              if (data.articles && data.articles.length > 0) {
-                newsData = data.articles.slice(0, 15).map(article => ({
-                  category: 'Financial News',
-                  title: article.title,
-                  description: (article.description || article.title || '').substring(0, 150) + '...',
-                  time: formatTimeAgo(new Date(article.publishedAt || article.datetime)),
-                  source: article.source?.name || 'Financial News',
-                  link: article.url || article.link || '#'
-                }));
-                break;
-              } else if (data.length > 0) { // Finnhub format
-                newsData = data.slice(0, 15).map(article => ({
-                  category: 'Market Update',
-                  title: article.headline,
-                  description: (article.summary || article.headline || '').substring(0, 150) + '...',
-                  time: formatTimeAgo(new Date(article.datetime * 1000)),
-                  source: article.source || 'Financial News',
-                  link: article.url || '#'
-                }));
-                break;
-              }
-            } catch (apiErr) {
-              console.log('News API failed:', apiErr);
-              continue;
-            }
-          }
-        } catch (newsErr) {
-          console.log('All news APIs failed:', newsErr);
+      if (allNews.length > 0) {
+        // Remove duplicates based on title similarity
+        const uniqueNews = allNews.filter((item, index, self) => {
+          return index === self.findIndex(t => 
+            t.title.toLowerCase().trim() === item.title.toLowerCase().trim()
+          );
+        });
+
+        // Sort by publication date (newest first)
+        uniqueNews.sort((a, b) => b.pubDate - a.pubDate);
+        
+        // Take top 20 articles
+        const finalNews = uniqueNews.slice(0, 20);
+        
+        setNewsItems(finalNews);
+        console.log(`Total unique news items loaded: ${finalNews.length}`);
+        
+        if (successfulFetches === 0) {
+          setError('Unable to fetch stock market news from any source. This may be due to network restrictions or API limitations.');
         }
+      } else {
+        setError('No stock market news articles could be loaded. This may be due to CORS restrictions or temporary API issues.');
       }
-
-      if (newsData.length === 0) {
-        throw new Error('No news sources available');
-      }
-
-      // Remove duplicates and limit to 15 items
-      const uniqueNews = newsData.filter((item, index, self) => 
-        index === self.findIndex(t => t.title === item.title)
-      ).slice(0, 15);
-
-      setNewsItems(uniqueNews);
-      return uniqueNews;
     } catch (err) {
-      console.error('Error fetching news:', err);
-      
-      // Set some placeholder message instead of empty array
+      console.error('Error in fetchNewsData:', err);
+      setError(`Failed to load news: ${err.message}`);
       setNewsItems([]);
-      throw err;
     }
+  };
+
+  // Parse RSS XML to JSON format
+  const parseRSSFromXML = async (xmlString) => {
+    try {
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(xmlString, 'text/xml');
+      
+      const items = xmlDoc.querySelectorAll('item');
+      const parsedItems = [];
+      
+      items.forEach(item => {
+        const title = item.querySelector('title')?.textContent;
+        const description = item.querySelector('description')?.textContent;
+        const pubDate = item.querySelector('pubDate')?.textContent;
+        const link = item.querySelector('link')?.textContent;
+        const guid = item.querySelector('guid')?.textContent;
+        
+        if (title) {
+          parsedItems.push({
+            title,
+            description: description || title,
+            pubDate,
+            link: link || guid,
+            guid: guid || link
+          });
+        }
+      });
+      
+      return {
+        status: 'ok',
+        items: parsedItems
+      };
+    } catch (err) {
+      console.error('Error parsing RSS XML:', err);
+      return { status: 'error', items: [] };
+    }
+  };
+
+  // Helper function to clean HTML and truncate description
+  const cleanDescription = (html, maxLength = 200) => {
+    if (!html) return '';
+    
+    // Remove HTML tags
+    const text = html.replace(/<[^>]*>/g, '');
+    // Decode HTML entities
+    const textarea = document.createElement('textarea');
+    textarea.innerHTML = text;
+    const decoded = textarea.value;
+    // Truncate and add ellipsis
+    return decoded.length > maxLength 
+      ? decoded.substring(0, maxLength).trim() + '...' 
+      : decoded.trim();
   };
 
   // Helper function to format time ago
   const formatTimeAgo = (date) => {
+    if (!date || isNaN(date.getTime())) return 'Unknown time';
+    
     const now = new Date();
     const diffInMinutes = Math.floor((now - date) / (1000 * 60));
     
@@ -340,205 +440,211 @@ const News = () => {
     if (diffInHours < 24) return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
     
     const diffInDays = Math.floor(diffInHours / 24);
-    return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
+    if (diffInDays < 7) return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
+    
+    return date.toLocaleDateString();
   };
 
-  // Fetch all data with better error handling
+  // Fetch all data
   const fetchAllData = async () => {
     setLoading(true);
     setError(null);
     
     try {
-      // Fetch market data and news concurrently, but don't fail if one fails
-      const marketPromise = fetchMarketData().catch(err => {
-        console.error('Market data failed:', err);
-        return null;
-      });
-      
-      const newsPromise = fetchNewsData().catch(err => {
-        console.error('News data failed:', err);
-        return null;
-      });
-
-      const [marketResult, newsResult] = await Promise.allSettled([marketPromise, newsPromise]);
-
-      // Set error only if both failed
-      if (marketResult.status === 'rejected' && newsResult.status === 'rejected') {
-        setError('Failed to fetch data from all sources. Please check your internet connection and try again.');
-      } else if (marketResult.status === 'rejected') {
-        setError('Market data temporarily unavailable. News data loaded successfully.');
-      } else if (newsResult.status === 'rejected') {
-        setError('News data temporarily unavailable. Market data loaded successfully.');
-      }
-
+      await Promise.all([fetchMarketData(), fetchNewsData()]);
       setLastUpdated(new Date());
     } catch (err) {
       console.error('Error in fetchAllData:', err);
-      setError('An unexpected error occurred. Please try refreshing the page.');
+      setError('Failed to load data. Please try refreshing the page.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Initial data fetch and auto-refresh every 4 seconds
+  // Manual refresh function
+  const handleRefresh = () => {
+    fetchAllData();
+  };
+
+  // Initial data fetch and auto-refresh
   useEffect(() => {
     fetchAllData();
     
-    // Auto-refresh every 4 seconds
-    const interval = setInterval(fetchAllData, 4 * 1000);
+    // Refresh every 15 minutes (reduced frequency to avoid rate limits)
+    const interval = setInterval(fetchAllData, 15 * 60 * 1000);
     
     return () => clearInterval(interval);
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-24">
-      <div className="container mx-auto px-4">
-        {/* Header */}
-        <div className="mb-12 text-center">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4 flex items-center justify-center">
-            <Newspaper className="h-8 w-8 mr-3 text-blue-600" />
-            Live Indian Stock Market News
-          </h1>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Real-time data and live news from trusted financial sources.
-          </p>
-          
-          {/* Last Updated */}
-          {lastUpdated && (
-            <div className="flex items-center justify-center mt-4">
-              <p className="text-sm text-gray-500">
-                Last updated: {lastUpdated.toLocaleTimeString()}
-              </p>
-            </div>
-          )}
-        </div>
+    <div>
+      <Hero
+        title="Market News & Updates"
+        subtitle="Stay informed with real-time market data and the latest financial news from trusted sources"
+        image="https://images.pexels.com/photos/6801648/pexels-photo-6801648.jpeg"
+      />
 
-        {/* Error Display */}
-        {error && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6 flex items-center">
-            <AlertCircle className="h-5 w-5 text-yellow-500 mr-2" />
-            <span className="text-yellow-700">{error}</span>
-          </div>
-        )}
-
-        {/* Market Overview */}
-        <div className="bg-white rounded-xl shadow-md p-6 mb-8">
-          <h2 className="text-2xl font-semibold mb-4 flex items-center">
-            <TrendingUp className="h-6 w-6 mr-2 text-blue-600" />
-            Live Market Data
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <p className="text-sm text-gray-600">SENSEX (^BSESN)</p>
-              <p className={`text-2xl font-bold ${
-                marketData.sensex?.isPositive ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {marketData.sensex?.value}
-              </p>
-              {marketData.sensex?.change && !['Error', 'Unavailable', 'Loading...', 'Updating...'].includes(marketData.sensex?.value) && (
-                <p className={`text-sm ${
-                  marketData.sensex?.isPositive ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {marketData.sensex.change} ({marketData.sensex.percent})
-                </p>
-              )}
-            </div>
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <p className="text-sm text-gray-600">NIFTY 50 (^NSEI)</p>
-              <p className={`text-2xl font-bold ${
-                marketData.nifty?.isPositive ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {marketData.nifty?.value}
-              </p>
-              {marketData.nifty?.change && !['Error', 'Unavailable', 'Loading...', 'Updating...'].includes(marketData.nifty?.value) && (
-                <p className={`text-sm ${
-                  marketData.nifty?.isPositive ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {marketData.nifty.change} ({marketData.nifty.percent})
-                </p>
-              )}
-            </div>
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <p className="text-sm text-gray-600">BANK NIFTY (^NSEBANK)</p>
-              <p className={`text-2xl font-bold ${
-                marketData.bankNifty?.isPositive ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {marketData.bankNifty?.value}
-              </p>
-              {marketData.bankNifty?.change && !['Error', 'Unavailable', 'Loading...', 'Updating...'].includes(marketData.bankNifty?.value) && (
-                <p className={`text-sm ${
-                  marketData.bankNifty?.isPositive ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {marketData.bankNifty.change} ({marketData.bankNifty.percent})
-                </p>
-              )}
+      <section className="py-20">
+        <div className="container mx-auto px-4">
+          {/* Last Updated Display with Refresh Button */}
+          <div className="text-center mb-8" data-aos="fade-up">
+            <div className="inline-flex items-center bg-gray-100 rounded-full px-6 py-3 text-gray-600">
+              <Clock className="h-5 w-5 mr-2" />
+              <span className="text-sm mr-4">
+                {lastUpdated ? `Last updated: ${lastUpdated.toLocaleTimeString()}` : 'Loading...'}
+              </span>
+              <button
+                onClick={handleRefresh}
+                disabled={loading}
+                className="flex items-center text-blue-600 hover:text-blue-800 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              </button>
             </div>
           </div>
-        </div>
 
-        {/* Latest News */}
-        <div className="space-y-6">
-          <h2 className="text-2xl font-semibold mb-4">Latest Financial News</h2>
-          
-          {loading && newsItems.length === 0 ? (
-            <div className="space-y-4">
-              {[1, 2, 3, 4, 5, 6].map(i => (
-                <div key={i} className="bg-white rounded-xl shadow-md p-6">
-                  <div className="animate-pulse space-y-4">
-                    <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-                    <div className="h-6 bg-gray-200 rounded w-3/4"></div>
-                    <div className="h-4 bg-gray-200 rounded w-full"></div>
-                    <div className="h-3 bg-gray-200 rounded w-1/3"></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : newsItems.length > 0 ? (
-            newsItems.map((item, index) => (
-              <div key={index} className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <span className="inline-block px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium mb-3">
-                      {item.category}
-                    </span>
-                    <h3 className="text-xl font-semibold text-gray-900 mb-2">{item.title}</h3>
-                    <p className="text-gray-600 mb-4">{item.description}</p>
-                    <div className="flex items-center text-sm text-gray-500">
-                      <Clock className="h-4 w-4 mr-1" />
-                      <span>{item.time}</span>
-                      <span className="mx-2">•</span>
-                      <span>Source: {item.source}</span>
-                    </div>
-                  </div>
-                  {item.link && item.link !== '#' && (
-                    <a
-                      href={item.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center text-blue-600 hover:text-blue-800 ml-4"
-                    >
-                      <span className="mr-1">Read more</span>
-                      <ArrowUpRight className="h-4 w-4" />
-                    </a>
-                  )}
+          {/* Error Display */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-8" data-aos="fade-up">
+              <div className="flex items-center">
+                <AlertCircle className="h-6 w-6 text-red-600 mr-3" />
+                <div>
+                  <h3 className="text-red-800 font-semibold">Unable to Load News</h3>
+                  <p className="text-red-700 mt-1">{error}</p>
+                  <p className="text-red-600 mt-2 text-sm">
+                    This is likely due to CORS restrictions in the browser. Try refreshing the page or check back later.
+                  </p>
+                  <button
+                    onClick={handleRefresh}
+                    className="mt-3 text-red-600 hover:text-red-800 underline"
+                  >
+                    Try Again
+                  </button>
                 </div>
               </div>
-            ))
-          ) : (
-            <div className="bg-white rounded-xl shadow-md p-6 text-center">
-              <p className="text-gray-500">
-                Financial data services are currently experiencing connectivity issues. This is common with free APIs and proxy services.
-                <br />
-                <strong>Alternative options:</strong>
-                <br />
-                • Visit directly: <a href="https://finance.yahoo.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Yahoo Finance</a> | <a href="https://www.moneycontrol.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Moneycontrol</a> | <a href="https://economictimes.indiatimes.com/markets" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Economic Times Markets</a>
-              </p>
             </div>
           )}
-        </div>
 
-        
-      </div>
+          {/* Market Overview */}
+          <div className="bg-white rounded-xl shadow-md p-8 mb-12" data-aos="fade-up">
+            <h2 className="text-3xl font-serif font-bold mb-8 flex items-center">
+              <TrendingUp className="h-8 w-8 mr-3 text-blue-600" />
+              Live Market Data
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="p-6 bg-gray-50 rounded-lg" data-aos="fade-up" data-aos-delay="100">
+                <p className="text-sm text-gray-600 mb-2">SENSEX (^BSESN)</p>
+                <p className={`text-3xl font-bold mb-2 ${
+                  marketData.sensex?.isPositive ? 'text-green-600' : 'text-red-600'
+                }`}>
+                  {marketData.sensex?.value}
+                </p>
+                {marketData.sensex?.change && !['Loading...', 'Error'].includes(marketData.sensex?.value) && (
+                  <p className={`text-sm ${
+                    marketData.sensex?.isPositive ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {marketData.sensex.change} ({marketData.sensex.percent})
+                  </p>
+                )}
+              </div>
+              <div className="p-6 bg-gray-50 rounded-lg" data-aos="fade-up" data-aos-delay="200">
+                <p className="text-sm text-gray-600 mb-2">NIFTY 50 (^NSEI)</p>
+                <p className={`text-3xl font-bold mb-2 ${
+                  marketData.nifty?.isPositive ? 'text-green-600' : 'text-red-600'
+                }`}>
+                  {marketData.nifty?.value}
+                </p>
+                {marketData.nifty?.change && !['Loading...', 'Error'].includes(marketData.nifty?.value) && (
+                  <p className={`text-sm ${
+                    marketData.nifty?.isPositive ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {marketData.nifty.change} ({marketData.nifty.percent})
+                  </p>
+                )}
+              </div>
+              <div className="p-6 bg-gray-50 rounded-lg" data-aos="fade-up" data-aos-delay="300">
+                <p className="text-sm text-gray-600 mb-2">BANK NIFTY (^NSEBANK)</p>
+                <p className={`text-3xl font-bold mb-2 ${
+                  marketData.bankNifty?.isPositive ? 'text-green-600' : 'text-red-600'
+                }`}>
+                  {marketData.bankNifty?.value}
+                </p>
+                {marketData.bankNifty?.change && !['Loading...', 'Error'].includes(marketData.bankNifty?.value) && (
+                  <p className={`text-sm ${
+                    marketData.bankNifty?.isPositive ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {marketData.bankNifty.change} ({marketData.bankNifty.percent})
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Latest News */}
+          <div className="space-y-8" data-aos="fade-up">
+            <h2 className="text-3xl font-serif font-bold text-center">Latest Stock Market News</h2>
+            
+            {loading && newsItems.length === 0 ? (
+              <div className="space-y-6">
+                {[1, 2, 3, 4, 5, 6].map(i => (
+                  <div key={i} className="bg-white rounded-xl shadow-md p-8" data-aos="fade-up" data-aos-delay={i * 100}>
+                    <div className="animate-pulse space-y-4">
+                      <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                      <div className="h-6 bg-gray-200 rounded w-3/4"></div>
+                      <div className="h-4 bg-gray-200 rounded w-full"></div>
+                      <div className="h-3 bg-gray-200 rounded w-1/3"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : newsItems.length > 0 ? (
+              newsItems.map((item, index) => (
+                <div key={index} className="bg-white rounded-xl shadow-md p-8 hover:shadow-lg transition-shadow" data-aos="fade-up" data-aos-delay={index * 50}>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <span className="inline-block px-4 py-2 bg-blue-100 text-blue-800 rounded-full text-sm font-medium mb-4">
+                        {item.category}
+                      </span>
+                      <h3 className="text-2xl font-semibold text-gray-900 mb-4">{item.title}</h3>
+                      <p className="text-gray-600 mb-6 text-lg leading-relaxed">{item.description}</p>
+                      <div className="flex items-center text-sm text-gray-500">
+                        <Clock className="h-4 w-4 mr-2" />
+                        <span>{item.time}</span>
+                        <span className="mx-3">•</span>
+                        <span>Source: {item.source}</span>
+                      </div>
+                    </div>
+                    {item.link && item.link !== '#' && (
+                      <a
+                        href={item.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center text-blue-600 hover:text-blue-800 ml-6 px-4 py-2 border border-blue-200 rounded-md hover:bg-blue-50 transition-colors"
+                      >
+                        <span className="mr-2">Read more</span>
+                        <ArrowUpRight className="h-4 w-4" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ))
+            ) : !loading && !error ? (
+              <div className="bg-white rounded-xl shadow-md p-8 text-center" data-aos="fade-up">
+                <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500 text-lg mb-4">
+                  No stock market news articles are currently available.
+                </p>
+                <button
+                  onClick={handleRefresh}
+                  className="text-blue-600 hover:text-blue-800 underline"
+                >
+                  Try refreshing the page
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </section>
     </div>
   );
 };
