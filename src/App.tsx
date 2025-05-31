@@ -16,6 +16,7 @@ import AOS from 'aos';
 import 'aos/dist/aos.css';
 import './index.css';
 import PortfoliozzChatbot from './components/PortfoliozzChatbot';
+import News from './pages/News';
 
 function AppContent() {
   const location = useLocation();
@@ -41,6 +42,7 @@ function AppContent() {
             <Route path="/about" element={<AboutUs />} />
             <Route path="/core-values" element={<CoreValues />} />
             <Route path="/services" element={<Services />} />
+            <Route path="/news" element={<News />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/complaint" element={<Complaint />} />
             <Route path="/login" element={<Login />} />
