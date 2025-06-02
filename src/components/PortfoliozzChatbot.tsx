@@ -1,18 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Bot, User, TrendingUp, IndianRupee, Search } from 'lucide-react';
+import { MessageCircle, X, Send, Bot, User, TrendingUp, IndianRupee, Search, AlertTriangle } from 'lucide-react';
 
 const PortfoliozzChatbot = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
     {
       id: 1,
-      text: "नमस्ते! Welcome to Portfoliozz, your trusted SEBI-registered research analyst firm.\n\nWe specialize in providing expert analysis and recommendations for the Indian stock market, helping you make informed investment decisions.\n\nOur Premium Services:\n\n🔹 Equity Intraday (₹1,000/month)\n   • 2-4 daily high-probability calls\n   • Real-time market insights\n   • Clear Stop Loss & Target levels\n\n🔹 Option Buy (₹1,000/month)\n   • 4-6 weekly recommendations\n   • Min. Capital: ₹1,00,000\n   • Real-time trade alerts\n\n🔹 Option Sell Strategies (₹10,000/month)\n   • Advanced options strategies\n   • Min. Capital: ₹5,00,000\n   • Professional risk management\n\nHow may I assist you today? Feel free to ask about:\n• Market analysis\n• Stock recommendations\n• Service details\n• Company-specific research",
+      text: "नमस्ते! Welcome to Portfoliozz, your trusted SEBI-registered research analyst firm.\n\nWe specialize in providing expert analysis and recommendations for the Indian stock market, helping you make informed investment decisions.\n\nOur Premium Services:\n\n🔹 Equity Intraday (₹1,000/month)\n   • 2-4 daily high-probability calls\n   • Real-time market insights\n   • Clear Stop Loss & Target levels\n\n🔹 Option Buy (₹1,000/month)\n   • 4-6 weekly recommendations\n   • Min. Capital: ₹1,00,000\n   • Real-time trade alerts\n\n🔹 Option Sell Strategies (₹10,000/month)\n   • Advanced options strategies\n   • Min. Capital: ₹5,00,000\n   • Professional risk management\n\nHow may I assist you today? Feel free to ask about:\n• Market analysis\n• Stock recommendations\n• Service details\n• Company-specific research\n\nTip: Type 'analyse [company name]' for detailed stock analysis with real market data!",
       isBot: true,
       timestamp: new Date()
     }
   ]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [stockData, setStockData] = useState(null);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -32,6 +33,186 @@ const PortfoliozzChatbot = () => {
       inputRef.current.focus();
     }
   }, [isOpen]);
+
+  // Search for stocks using Yahoo Finance API
+  const searchStocks = async (query) => {
+    if (!query || query.length < 2) return [];
+    
+    try {
+      const proxyUrl = "https://api.allorigins.win/get?url=";
+      const targetUrl = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=10&newsCount=0&listsCount=0`;
+      
+      const response = await fetch(proxyUrl + encodeURIComponent(targetUrl));
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch search results: ${response.status}`);
+      }
+      
+      const responseData = await response.json();
+      const data = JSON.parse(responseData.contents);
+      
+      if (!data.quotes || data.quotes.length === 0) {
+        return [];
+      }
+      
+      // Filter for Indian stocks and indices
+      const filteredResults = data.quotes
+        .filter((quote) => 
+          quote.exchange === 'NSI' || 
+          quote.exchange === 'BSE' || 
+          (quote.quoteType === 'INDEX' && quote.market === 'in_market') ||
+          quote.symbol.includes('.NS') ||
+          quote.symbol.includes('.BO')
+        )
+        .map((quote) => ({
+          symbol: quote.symbol,
+          name: quote.longname || quote.shortname || quote.symbol,
+          exchange: quote.exchange
+        }));
+      
+      return filteredResults;
+      
+    } catch (error) {
+      console.error("Error searching stocks:", error);
+      return [];
+    }
+  };
+
+  // Fetch real stock data using Yahoo Finance API
+  const fetchRealStockData = async (stockSymbol) => {
+    try {
+      const proxyUrl = "https://api.allorigins.win/get?url=";
+      const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${stockSymbol}?interval=1d&range=1y`;
+      
+      const response = await fetch(proxyUrl + encodeURIComponent(targetUrl));
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch data: ${response.status}`);
+      }
+      
+      const responseData = await response.json();
+      const data = JSON.parse(responseData.contents);
+      
+      if (!data.chart || !data.chart.result || data.chart.result.length === 0) {
+        throw new Error("No data available for this symbol");
+      }
+      
+      const result = data.chart.result[0];
+      const meta = result.meta;
+      const timestamps = result.timestamp;
+      const indicators = result.indicators.quote[0];
+      
+      // Process the data
+      const processedData = {
+        symbol: meta.symbol,
+        currency: meta.currency,
+        exchangeName: meta.exchangeName,
+        currentPrice: meta.regularMarketPrice,
+        previousClose: meta.previousClose,
+        dayChange: meta.regularMarketPrice - meta.previousClose,
+        dayChangePercent: ((meta.regularMarketPrice - meta.previousClose) / meta.previousClose) * 100,
+        marketCap: meta.regularMarketPrice * (meta.sharesOutstanding || 0),
+        fiftyTwoWeekHigh: meta.fiftyTwoWeekHigh,
+        fiftyTwoWeekLow: meta.fiftyTwoWeekLow,
+        volume: meta.regularMarketVolume,
+        avgVolume: meta.averageDailyVolume10Day,
+        priceData: timestamps?.map((timestamp, index) => ({
+          date: new Date(timestamp * 1000).toLocaleDateString(),
+          timestamp: timestamp,
+          open: indicators.open[index],
+          high: indicators.high[index],
+          low: indicators.low[index],
+          close: indicators.close[index],
+          volume: indicators.volume[index]
+        })).filter(item => item.close !== null) || []
+      };
+      
+      return processedData;
+    } catch (error) {
+      console.error('Error fetching stock data:', error);
+      throw error;
+    }
+  };
+
+  const extractCompanyName = (message) => {
+    const words = message.toLowerCase().split(' ');
+    const analyzeIndex = words.findIndex(word => word.includes('analys') || word.includes('analyze'));
+    
+    if (analyzeIndex !== -1 && analyzeIndex < words.length - 1) {
+      // Get all words after "analyse/analyze"
+      return words.slice(analyzeIndex + 1).join(' ').replace(/[^\w\s.-]/g, '').trim();
+    }
+    
+    return null;
+  };
+
+  const formatStockDataForAnalysis = (stockData) => {
+    if (!stockData) return "No stock data available.";
+    
+    const recentData = stockData.priceData.slice(-30); // Last 30 days
+    const currentPrice = stockData.currentPrice;
+    const dayChange = stockData.dayChange;
+    const dayChangePercent = stockData.dayChangePercent;
+    
+    // Calculate technical indicators
+    const prices = recentData.map(d => d.close).filter(p => p !== null);
+    const sma20 = prices.length >= 20 ? prices.slice(-20).reduce((a, b) => a + b) / 20 : null;
+    const sma50 = prices.length >= 50 ? prices.slice(-50).reduce((a, b) => a + b) / 50 : null;
+    
+    // Calculate RSI (simplified)
+    const calculateRSI = (prices, period = 14) => {
+      if (prices.length < period + 1) return null;
+      
+      let gains = 0, losses = 0;
+      for (let i = prices.length - period; i < prices.length; i++) {
+        const change = prices[i] - prices[i - 1];
+        if (change > 0) gains += change;
+        else losses += Math.abs(change);
+      }
+      
+      const avgGain = gains / period;
+      const avgLoss = losses / period;
+      const rs = avgGain / avgLoss;
+      return 100 - (100 / (1 + rs));
+    };
+    
+    const rsi = calculateRSI(prices);
+    
+    // Support and resistance levels
+    const highs = recentData.map(d => d.high).filter(h => h !== null);
+    const lows = recentData.map(d => d.low).filter(l => l !== null);
+    const resistance = Math.max(...highs);
+    const support = Math.min(...lows);
+    
+    return `
+REAL-TIME STOCK DATA ANALYSIS FOR ${stockData.symbol}
+
+Current Market Data:
+- Current Price: ₹${currentPrice?.toFixed(2)}
+- Day Change: ₹${dayChange?.toFixed(2)} (${dayChangePercent?.toFixed(2)}%)
+- Previous Close: ₹${stockData.previousClose?.toFixed(2)}
+- 52-Week High: ₹${stockData.fiftyTwoWeekHigh?.toFixed(2)}
+- 52-Week Low: ₹${stockData.fiftyTwoWeekLow?.toFixed(2)}
+- Market Cap: ₹${(stockData.marketCap / 10000000)?.toFixed(0)} Cr
+- Volume: ${stockData.volume?.toLocaleString()}
+- Avg Volume: ${stockData.avgVolume?.toLocaleString()}
+
+Technical Indicators:
+- 20-Day SMA: ₹${sma20?.toFixed(2)}
+- 50-Day SMA: ₹${sma50?.toFixed(2)}
+- RSI (14): ${rsi?.toFixed(2)}
+- Support Level: ₹${support?.toFixed(2)}
+- Resistance Level: ₹${resistance?.toFixed(2)}
+
+Price Trend (Last 10 Days):
+${recentData.slice(-10).map(d => 
+  `${d.date}: Open ₹${d.open?.toFixed(2)}, High ₹${d.high?.toFixed(2)}, Low ₹${d.low?.toFixed(2)}, Close ₹${d.close?.toFixed(2)}`
+).join('\n')}
+
+Exchange: ${stockData.exchangeName}
+Currency: ${stockData.currency}
+`;
+  };
 
   const portfoliozzContext = `
 You are Portfoliozz AI Assistant, representing Portfoliozz - a SEBI-registered research analyst firm specializing in the Indian stock market. 
@@ -70,71 +251,54 @@ SERVICES OFFERED:
 CONTACT: WhatsApp - 7592833517
 
 STOCK ANALYSIS FRAMEWORK:
-When users ask about specific companies or stocks, provide comprehensive analysis in this structured format:
+When provided with real stock data, analyze it comprehensively in this structured format:
 
 **INVESTMENT ANALYSIS - [COMPANY NAME]**
 
 **Current Market Position**
-- Current stock price and market cap
-- Recent performance (1-day, 1-week, 1-month, 1-year changes)
-- Trading volume analysis
+- Use the real-time data provided including current price, market cap, volume
+- Calculate percentage changes and trends from the actual data
+- Comment on trading volume vs average volume
 
-**Financial Performance Highlights**
-- Revenue & Profitability (Annual and recent quarterly)
-- Key Financial Ratios:
-  * Price-to-Earnings Ratio (P/E)
-  * Price-to-Book Ratio (P/B)
-  * Return on Equity (ROE)
-  * Return on Assets (ROA)
-  * Debt-to-Equity Ratio
-  * Current Ratio
-  * EBITDA Margins
-- Dividend Yield and payout history
+**Technical Analysis (Based on Real Data)**
+- Analyze the actual support and resistance levels provided
+- Comment on moving averages (SMA 20, SMA 50) relative to current price
+- Interpret RSI levels for momentum
+- Analyze recent price action from the 10-day trend data
+- Do not give undefined responses
 
-**Growth Trajectory & Business Analysis**
-- Revenue growth trends
-- Market position and competitive advantages
-- Key business segments performance
-- Recent corporate developments
-- Management quality assessment
+**Price Action & Momentum**
+- Evaluate the recent price movements
+- Identify if stock is in uptrend, downtrend, or sideways
+- Comment on volume patterns
+- Assess 52-week high/low positioning
 
-**Technical Analysis**
-- Support and resistance levels
-- Moving averages (50-day, 200-day)
-- RSI and momentum indicators
-- Volume trends
+**Investment Recommendation**
+- Clear rating: BUY/HOLD/SELL with specific reasoning based on technical data
+- Entry Strategy with specific price levels based on support/resistance
+- Stop-loss recommendations using technical levels
+- Target price calculations based on resistance/support analysis
+- Risk-reward ratio assessment
 
-**Investment Considerations**
-**Positives:**
-- List 3-4 key strengths
-**Concerns:**
-- List 3-4 potential risks
-
-**My Professional Recommendation**
-- Clear rating: BUY/HOLD/SELL with rationale
-- Entry Strategy with specific price levels
-- Risk Management guidelines
-- Target price and time horizon
-- Portfolio allocation suggestion
+**Risk Management Guidelines**
+- Position sizing recommendations
+- Risk management based on volatility
+- Time horizon suggestions
 
 IMPORTANT GUIDELINES:
-- Act as a personal financial advisor
-- Provide specific, actionable insights
-- Include exact numbers and ratios when discussing financials
-- Give clear buy/sell/hold recommendations with reasoning
-- Suggest specific entry points and stop-loss levels
-- Consider both fundamental and technical aspects
-- Address risk management
-- Keep the tone professional yet accessible
-- Focus only on the requested company - no unnecessary comparisons
-- Use rupee symbol (₹) for Indian prices
+- Base ALL analysis on the real stock data provided
+- Do not give undefined responses
+- Give specific price levels for entry, stop-loss, and targets
+- Use actual technical indicators in your reasoning
+- Provide actionable insights based on current market data
+- Include exact numbers from the data provided
 - NEVER use asterisks (*) or any markdown formatting (**, *, ##, etc.) in responses
 - Format section headers and emphasis using plain text only
 - Use clear formatting with line breaks and spacing instead of special characters
 - Maintain SEBI compliance in all recommendations
-- Do not put any disclaimers in the response
+- Always include a disclaimer about market risks and the need for due diligence
 
-Remember: You are providing analysis as a SEBI-registered research analyst would, with proper disclaimers about market risks.
+Remember: You are analyzing REAL market data, not hypothetical scenarios. Base your recommendations on the actual technical indicators and price levels provided.
 `;
 
   const detectStockQuery = (message) => {
@@ -164,17 +328,109 @@ Remember: You are providing analysis as a SEBI-registered research analyst would
                              userMessage.toLowerCase().includes('analysis');
       
       let prompt;
+      let stockDataText = "";
+      
       if (isAnalysisQuery) {
-        // Comprehensive analysis without service promotion
-        prompt = `${portfoliozzContext}
+        // Extract company name and search for it
+        const companyName = extractCompanyName(userMessage);
+        
+        if (companyName) {
+          try {
+            // Show searching message
+            const searchingMessage = {
+              id: messages.length + Date.now(),
+              text: `Searching for "${companyName}" in Indian stock markets...`,
+              isBot: true,
+              timestamp: new Date(),
+              isLoading: true
+            };
+            setMessages(prev => [...prev, searchingMessage]);
+            
+            // Search for the company
+            const searchResults = await searchStocks(companyName);
+            
+            if (searchResults.length === 0) {
+              // Remove searching message
+              setMessages(prev => prev.filter(msg => !msg.isLoading));
+              
+              return `I couldn't find any Indian stock matching "${companyName}". 
+
+Please try:
+1. Using the exact company name (e.g., "Reliance Industries", "Tata Consultancy Services")
+2. Using the stock symbol (e.g., "RELIANCE", "TCS", "INFY")
+3. Check the spelling and try again
+
+Popular examples to try:
+- analyse Reliance Industries
+- analyse TCS
+- analyse HDFC Bank
+- analyse Infosys
+
+For immediate assistance, contact us at WhatsApp: 7592833517`;
+            }
+            
+            // Use the first search result (most relevant)
+            const selectedStock = searchResults[0];
+            
+            // Update searching message
+            setMessages(prev => prev.map(msg => 
+              msg.isLoading ? 
+                {...msg, text: `Found ${selectedStock.name} (${selectedStock.symbol}). Fetching real-time market data...`} : 
+                msg
+            ));
+            
+            // Fetch real stock data
+            const fetchedStockData = await fetchRealStockData(selectedStock.symbol);
+            setStockData(fetchedStockData);
+            stockDataText = formatStockDataForAnalysis(fetchedStockData);
+            
+            // Remove loading message
+            setMessages(prev => prev.filter(msg => !msg.isLoading));
+            
+            prompt = `${portfoliozzContext}
 
 User Query: ${userMessage}
+Company Found: ${selectedStock.name} (${selectedStock.symbol})
 
-This is a request for comprehensive stock analysis. Provide detailed investment analysis following the structured format outlined in the context. Act as a professional financial advisor and give specific, actionable recommendations with clear reasoning.
+REAL STOCK DATA PROVIDED:
+${stockDataText}
 
-Do NOT include any service promotions, subscription offers, or contact information in the response. Focus purely on the investment analysis and recommendations.
+This is a request for comprehensive stock analysis using REAL market data. Provide detailed investment analysis following the structured format outlined in the context. Base your entire analysis on the actual stock data provided above.
 
-Important: Provide specific numbers, ratios, and price levels where applicable. Give clear BUY/HOLD/SELL recommendations with entry points and risk management guidelines.`;
+Act as a professional SEBI-registered financial advisor and give specific, actionable recommendations with clear reasoning based on the real technical indicators and price levels.
+
+Do NOT include any service promotions in the response. Focus purely on the investment analysis using the real data.
+
+Important: Use the actual numbers, ratios, and price levels from the real data provided. Give clear BUY/HOLD/SELL recommendations with specific entry points and risk management guidelines based on the technical analysis of real market data.`;
+          } catch (error) {
+            console.error('Error in stock analysis:', error);
+            // Remove loading message
+            setMessages(prev => prev.filter(msg => !msg.isLoading));
+            
+            return `I encountered an error while fetching data for "${companyName}". This could be due to:
+
+1. Network connectivity issues
+2. Market data temporarily unavailable
+3. Invalid or delisted stock symbol
+
+Please try again in a moment or try with a different company name.
+
+For immediate assistance, you can contact us at WhatsApp: 7592833517`;
+          }
+        } else {
+          return `To provide you with accurate analysis using real market data, please specify the company name in your query.
+
+Format: "analyse [COMPANY_NAME]"
+
+Examples:
+- analyse Reliance Industries
+- analyse Tata Consultancy Services
+- analyse HDFC Bank
+- analyse Infosys
+- analyse Asian Paints
+
+I'll search for the company in Indian stock markets and provide comprehensive technical analysis with specific buy/sell recommendations, entry points, and risk management guidelines using real-time data.`;
+        }
       } else if (isStockQuery) {
         // General stock query with subtle service mention
         prompt = `${portfoliozzContext}
@@ -183,7 +439,7 @@ User Query: ${userMessage}
 
 This appears to be a stock/investment related query. Provide helpful insights and if appropriate, gently mention our services that could help with their investment needs.
 
-For comprehensive stock analysis, guide users to use "analyse [company name]" format.
+For comprehensive stock analysis with real market data, guide users to use "analyse [company name]" format.
 
 Provide relevant insights with professional recommendations where applicable.`;
       } else {
@@ -194,7 +450,7 @@ User Query: ${userMessage}
 
 Please provide a helpful response as the Portfoliozz AI Assistant. Focus on how our services can help the user or provide general market insights as appropriate.
 
-Tip: For detailed stock analysis, suggest users to type "analyse [company name]" for comprehensive investment insights.`;
+Tip: For detailed stock analysis with real-time data, suggest users to type "analyse [company name]" for comprehensive investment insights using live market data.`;
       }
 
       const response = await fetch(GEMINI_API_URL, {
@@ -232,14 +488,17 @@ Tip: For detailed stock analysis, suggest users to type "analyse [company name]"
         
         // Remove all markdown formatting
         botResponse = botResponse
-          .replace(/\*\*(.*?)\*\*/g, '$1')  // Remove bold markdown **text**
-          .replace(/\*(.*?)\*/g, '$1')      // Remove italic markdown *text*
-          .replace(/#{1,6}\s/g, '')         // Remove header markdown ### 
-          .replace(/^\s*[\*\-\+]\s/gm, '• ') // Replace markdown bullets with bullet points
-          .replace(/^\s*\d+\.\s/gm, '')     // Remove numbered list markdown
+          .replace(/\*\*(.*?)\*\*/g, '$1')  
+          .replace(/\*(.*?)\*/g, '$1')      
+          .replace(/#{1,6}\s/g, '')         
+          .replace(/^\s*[\*\-\+]\s/gm, '• ') 
+          .replace(/^\s*\d+\.\s/gm, '')     
           .trim();
         
-        
+        // Add disclaimer for stock analysis
+        if (isAnalysisQuery && stockDataText) {
+          botResponse += "\n\nDISCLAIMER: This analysis is based on technical indicators and historical data. Stock market investments are subject to market risks. Please read all related documents carefully and consult with a financial advisor before making investment decisions. Past performance does not guarantee future results.";
+        }
         
         return botResponse;
       } else {
@@ -331,7 +590,7 @@ Tip: For detailed stock analysis, suggest users to type "analyse [company name]"
                 <h3 className="font-bold text-xl">Portfoliozz AI</h3>
                 <div className="flex items-center space-x-2">
                   <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                  <p className="text-sm text-slate-200">SEBI Registered • Online</p>
+                  <p className="text-sm text-slate-200">SEBI Registered • Real-Time Data</p>
                 </div>
               </div>
             </div>
@@ -353,14 +612,24 @@ Tip: For detailed stock analysis, suggest users to type "analyse [company name]"
                 <div
                   className={`max-w-[85%] rounded-2xl p-4 shadow-lg ${
                     message.isBot
-                      ? 'bg-gradient-to-br from-slate-50 to-white border border-slate-200 text-gray-800'
+                      ? message.isLoading
+                        ? 'bg-gradient-to-br from-yellow-50 to-yellow-100 border border-yellow-200 text-gray-800'
+                        : 'bg-gradient-to-br from-slate-50 to-white border border-slate-200 text-gray-800'
                       : 'bg-[#1e3a8a] text-white'
                   }`}
                 >
                   <div className="flex items-start space-x-3">
                     {message.isBot && (
-                      <div className="bg-gradient-to-br from-slate-100 to-slate-200 rounded-full p-2 mt-1">
-                        <Search className="h-4 w-4 text-[#1e3a8a]" />
+                      <div className={`rounded-full p-2 mt-1 ${
+                        message.isLoading 
+                          ? 'bg-yellow-200' 
+                          : 'bg-gradient-to-br from-slate-100 to-slate-200'
+                      }`}>
+                        {message.isLoading ? (
+                          <Search className="h-4 w-4 text-yellow-600 animate-spin" />
+                        ) : (
+                          <Bot className="h-4 w-4 text-[#1e3a8a]" />
+                        )}
                       </div>
                     )}
                     {!message.isBot && (
