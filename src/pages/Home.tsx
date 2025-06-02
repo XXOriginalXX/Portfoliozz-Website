@@ -233,7 +233,7 @@ const Home = () => {
           {marketNews.length > 0 && (
             <div className="text-center mt-12">
               <Link 
-                to="/market-news" 
+                to="/news" 
                 className="inline-flex items-center bg-accent hover:bg-accent/90 text-white px-6 py-3 rounded-md transition-all transform hover:translate-y-[-2px]"
               >
                 View All Market News
