@@ -629,7 +629,7 @@ Tip: For detailed stock analysis with real-time data, suggest users to type "ana
                 </svg>
               ) : (
                 <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8l4-4m0 0h4m-4 0v4m11-1l-4-4m0 0h-4m4 0v4M4 16l4 4m0 0h4m-4 0v-4m11 1l-4 4m0 0h-4m4 0v-4" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
                 </svg>
               )}
             </button>
