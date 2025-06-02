@@ -6,7 +6,7 @@ const PortfoliozzChatbot = () => {
   const [messages, setMessages] = useState([
     {
       id: 1,
-      text: "नमस्ते! Welcome to Portfoliozz, your trusted SEBI-registered research analyst firm.\n\nWe specialize in providing expert analysis and recommendations for the Indian stock market, helping you make informed investment decisions.\n\nOur Premium Services:\n\n🔹 Equity Intraday (₹1,000/month)\n   • 2-4 daily high-probability calls\n   • Real-time market insights\n   • Clear Stop Loss & Target levels\n\n🔹 Option Buy (₹1,000/month)\n   • 4-6 weekly recommendations\n   • Min. Capital: ₹1,00,000\n   • Real-time trade alerts\n\n🔹 Option Sell Strategies (₹10,000/month)\n   • Advanced options strategies\n   • Min. Capital: ₹5,00,000\n   • Professional risk management\n\nHow may I assist you today? Feel free to ask about:\n• Market analysis\n• Stock recommendations\n• Service details\n• Company-specific research\n\nTip: Type 'analyse [company name]' for detailed stock analysis with real market data!",
+      text: "नमस्ते! Welcome to Portfoliozz, Ask ' Analyze ComapnyName ' and we will analyze the specific company for you",
       isBot: true,
       timestamp: new Date()
     }
