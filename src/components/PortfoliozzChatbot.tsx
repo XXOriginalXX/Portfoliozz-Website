@@ -14,6 +14,7 @@ const PortfoliozzChatbot = () => {
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [stockData, setStockData] = useState(null);
+  const [isExpanded, setIsExpanded] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -582,150 +583,173 @@ Tip: For detailed stock analysis with real-time data, suggest users to type "ana
   };
 
   return (
-    <div className="fixed bottom-4 right-4 z-50">
-      {!isOpen && (
-        <button
-          onClick={() => setIsOpen(true)}
-          className="bg-[#1e3a8a] hover:bg-[#1e4199] text-white rounded-full p-4 shadow-2xl transition-all duration-300 hover:scale-110 group relative"
-          aria-label="Open chat"
-        >
-          <MessageCircle className="h-7 w-7 group-hover:animate-pulse" />
-          <div className="absolute -top-2 -right-2 bg-[#D4AF37] text-white text-xs rounded-full w-6 h-6 flex items-center justify-center animate-pulse">
-            AI
-          </div>
-        </button>
-      )}
+  <div className="fixed bottom-4 right-4 z-50">
+    {!isOpen && (
+      <button
+        onClick={() => setIsOpen(true)}
+        className="bg-[#1e3a8a] hover:bg-[#1e4199] text-white rounded-full p-4 shadow-2xl transition-all duration-300 hover:scale-110 group relative"
+        aria-label="Open chat"
+      >
+        <MessageCircle className="h-7 w-7 group-hover:animate-pulse" />
+        <div className="absolute -top-2 -right-2 bg-[#D4AF37] text-white text-xs rounded-full w-6 h-6 flex items-center justify-center animate-pulse">
+          AI
+        </div>
+      </button>
+    )}
 
-      {isOpen && (
-        <div className="bg-gradient-to-b from-slate-50 to-white rounded-2xl shadow-2xl w-96 h-[600px] flex flex-col border border-slate-200 overflow-hidden animate-in slide-in-from-bottom-5 duration-300">
-          <div className="bg-[#1e3a8a] text-white p-6 flex items-center justify-between relative overflow-hidden">
-            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnM1LjM3MyAxMiAxMiAxMiAxMi01LjM3MyAxMi0xMi01LjM3My0xMi0xMi0xMnptMCAxOGMtMy4zMTQgMC02LTIuNjg2LTYtNnMyLjY4Ni02IDYtNiA2IDIuNjg2IDYgNi0yLjY4NiA2LTYgNnoiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4xKSIvPjwvZz48L3N2Zz4=')] opacity-25"></div>
-            <div className="flex items-center space-x-4 relative z-10">
-              <div className="bg-[#D4AF37] rounded-full p-3 shadow-lg">
-                <TrendingUp className="h-6 w-6" />
-              </div>
-              <div>
-                <h3 className="font-bold text-xl">Portfoliozz AI</h3>
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                  <p className="text-sm text-slate-200">SEBI Registered • Real-Time Data</p>
-                </div>
+    {isOpen && (
+      <div className={`bg-gradient-to-b from-slate-50 to-white rounded-2xl shadow-2xl flex flex-col border border-slate-200 overflow-hidden animate-in slide-in-from-bottom-5 duration-300 ${
+        isExpanded 
+          ? 'fixed inset-4 w-auto h-auto' 
+          : 'w-96 h-[600px]'
+      }`}>
+        <div className="bg-[#1e3a8a] text-white p-6 flex items-center justify-between relative overflow-hidden">
+          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnM1LjM3MyAxMiAxMiAxMiAxMi01LjM3MyAxMi0xMi01LjM3My0xMi0xMi0xMnptMCAxOGMtMy4zMTQgMC02LTIuNjg2LTYtNnMyLjY4Ni02IDYtNiA2IDIuNjg2IDYgNi0yLjY4NiA2LTYgNnoiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4xKSIvPjwvZz48L3N2Zz4=')] opacity-25"></div>
+          <div className="flex items-center space-x-4 relative z-10">
+            <div className="bg-[#D4AF37] rounded-full p-3 shadow-lg">
+              <TrendingUp className="h-6 w-6" />
+            </div>
+            <div>
+              <h3 className="font-bold text-xl">Portfoliozz AI</h3>
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                <p className="text-sm text-slate-200">SEBI Registered • Real-Time Data</p>
               </div>
             </div>
+          </div>
+          <div className="flex items-center space-x-2 relative z-10">
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="text-white hover:bg-white/20 rounded-full p-2 transition-all duration-200"
+              aria-label={isExpanded ? "Minimize chat" : "Expand chat"}
+            >
+              {isExpanded ? (
+                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                </svg>
+              ) : (
+                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8l4-4m0 0h4m-4 0v4m11-1l-4-4m0 0h-4m4 0v4M4 16l4 4m0 0h4m-4 0v-4m11 1l-4 4m0 0h-4m4 0v-4" />
+                </svg>
+              )}
+            </button>
             <button
               onClick={() => setIsOpen(false)}
-              className="text-white hover:bg-white/20 rounded-full p-2 transition-all duration-200 relative z-10 hover:rotate-90"
+              className="text-white hover:bg-white/20 rounded-full p-2 transition-all duration-200 hover:rotate-90"
               aria-label="Close chat"
             >
               <X className="h-6 w-6" />
             </button>
           </div>
+        </div>
 
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
-            {messages.map((message) => (
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {messages.map((message) => (
+            <div
+              key={message.id}
+              className={`flex ${message.isBot ? 'justify-start' : 'justify-end'} animate-in fade-in-50 duration-300`}
+            >
               <div
-                key={message.id}
-                className={`flex ${message.isBot ? 'justify-start' : 'justify-end'} animate-in fade-in-50 duration-300`}
+                className={`${isExpanded ? 'max-w-[70%]' : 'max-w-[85%]'} rounded-2xl p-4 shadow-lg ${
+                  message.isBot
+                    ? message.isLoading
+                      ? 'bg-gradient-to-br from-yellow-50 to-yellow-100 border border-yellow-200 text-gray-800'
+                      : 'bg-gradient-to-br from-slate-50 to-white border border-slate-200 text-gray-800'
+                    : 'bg-[#1e3a8a] text-white'
+                }`}
               >
-                <div
-                  className={`max-w-[85%] rounded-2xl p-4 shadow-lg ${
-                    message.isBot
-                      ? message.isLoading
-                        ? 'bg-gradient-to-br from-yellow-50 to-yellow-100 border border-yellow-200 text-gray-800'
-                        : 'bg-gradient-to-br from-slate-50 to-white border border-slate-200 text-gray-800'
-                      : 'bg-[#1e3a8a] text-white'
-                  }`}
-                >
-                  <div className="flex items-start space-x-3">
-                    {message.isBot && (
-                      <div className={`rounded-full p-2 mt-1 ${
-                        message.isLoading 
-                          ? 'bg-yellow-200' 
-                          : 'bg-gradient-to-br from-slate-100 to-slate-200'
-                      }`}>
-                        {message.isLoading ? (
-                          <Search className="h-4 w-4 text-yellow-600 animate-spin" />
-                        ) : (
-                          <Bot className="h-4 w-4 text-[#1e3a8a]" />
-                        )}
-                      </div>
-                    )}
-                    {!message.isBot && (
-                      <div className="bg-white/20 rounded-full p-2 mt-1">
-                        <User className="h-4 w-4 text-white" />
-                      </div>
-                    )}
-                    <div className="flex-1">
-                      <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                        {message.text}
-                      </p>
-                      <p className={`text-xs mt-2 ${
-                        message.isBot ? 'text-[#1e3a8a]' : 'text-slate-200'
-                      }`}>
-                        {formatTime(message.timestamp)}
-                      </p>
+                <div className="flex items-start space-x-3">
+                  {message.isBot && (
+                    <div className={`rounded-full p-2 mt-1 ${
+                      message.isLoading 
+                        ? 'bg-yellow-200' 
+                        : 'bg-gradient-to-br from-slate-100 to-slate-200'
+                    }`}>
+                      {message.isLoading ? (
+                        <Search className="h-4 w-4 text-yellow-600 animate-spin" />
+                      ) : (
+                        <Bot className="h-4 w-4 text-[#1e3a8a]" />
+                      )}
                     </div>
+                  )}
+                  {!message.isBot && (
+                    <div className="bg-white/20 rounded-full p-2 mt-1">
+                      <User className="h-4 w-4 text-white" />
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                      {message.text}
+                    </p>
+                    <p className={`text-xs mt-2 ${
+                      message.isBot ? 'text-[#1e3a8a]' : 'text-slate-200'
+                    }`}>
+                      {formatTime(message.timestamp)}
+                    </p>
                   </div>
                 </div>
               </div>
-            ))}
-            
-            {isLoading && (
-              <div className="flex justify-start animate-in fade-in-50 duration-300">
-                <div className="bg-gradient-to-br from-slate-50 to-white border border-slate-200 rounded-2xl p-4 max-w-[85%] shadow-lg">
-                  <div className="flex items-center space-x-3">
-                    <div className="bg-gradient-to-br from-slate-100 to-slate-200 rounded-full p-2">
-                      <Bot className="h-4 w-4 text-[#1e3a8a]" />
+            </div>
+          ))}
+          
+          {isLoading && (
+            <div className="flex justify-start animate-in fade-in-50 duration-300">
+              <div className={`bg-gradient-to-br from-slate-50 to-white border border-slate-200 rounded-2xl p-4 shadow-lg ${
+                isExpanded ? 'max-w-[70%]' : 'max-w-[85%]'
+              }`}>
+                <div className="flex items-center space-x-3">
+                  <div className="bg-gradient-to-br from-slate-100 to-slate-200 rounded-full p-2">
+                    <Bot className="h-4 w-4 text-[#1e3a8a]" />
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="flex space-x-1">
+                      <div className="w-2 h-2 bg-[#1e3a8a] rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-[#1e3a8a] rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                      <div className="w-2 h-2 bg-[#1e3a8a] rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <div className="flex space-x-1">
-                        <div className="w-2 h-2 bg-[#1e3a8a] rounded-full animate-bounce"></div>
-                        <div className="w-2 h-2 bg-[#1e3a8a] rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                        <div className="w-2 h-2 bg-[#1e3a8a] rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-                      </div>
-                      <span className="text-sm text-slate-600">Analyzing market data...</span>
-                    </div>
+                    <span className="text-sm text-slate-600">Analyzing market data...</span>
                   </div>
                 </div>
               </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
 
-          <div className="p-6 border-t border-slate-200 bg-white">
-            <div className="flex space-x-3">
-              <textarea
-                ref={inputRef}
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Type 'analyse [company name]' for detailed stock analysis or ask general questions..."
-                className="flex-1 resize-none border-2 border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a8a] focus:border-[#1e3a8a] transition-all duration-200 bg-slate-50/50 focus:bg-white"
-                rows="1"
-                style={{ minHeight: '44px', maxHeight: '120px' }}
-                disabled={isLoading}
-              />
-              <button
-                onClick={handleSendMessage}
-                disabled={!inputText.trim() || isLoading}
-                className="bg-[#1e3a8a] hover:bg-[#1e4199] disabled:bg-slate-300 disabled:cursor-not-allowed text-white rounded-xl px-4 py-3 transition-all duration-200 flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-105 active:scale-95"
-                aria-label="Send message"
-              >
-                <Send className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="flex items-center justify-center mt-3 space-x-2">
-              <div className="w-1 h-1 bg-[#1e3a8a] rounded-full"></div>
-              <p className="text-xs text-slate-500">
-                Powered by Portfoliozz AI • SEBI Registered
-              </p>
-              <div className="w-1 h-1 bg-[#1e3a8a] rounded-full"></div>
-            </div>
+        <div className="p-6 border-t border-slate-200 bg-white">
+          <div className="flex space-x-3">
+            <textarea
+              ref={inputRef}
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Type 'analyse [company name]' for detailed stock analysis or ask general questions..."
+              className="flex-1 resize-none border-2 border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a8a] focus:border-[#1e3a8a] transition-all duration-200 bg-slate-50/50 focus:bg-white"
+              rows="1"
+              style={{ minHeight: '44px', maxHeight: '120px' }}
+              disabled={isLoading}
+            />
+            <button
+              onClick={handleSendMessage}
+              disabled={!inputText.trim() || isLoading}
+              className="bg-[#1e3a8a] hover:bg-[#1e4199] disabled:bg-slate-300 disabled:cursor-not-allowed text-white rounded-xl px-4 py-3 transition-all duration-200 flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-105 active:scale-95"
+              aria-label="Send message"
+            >
+              <Send className="h-5 w-5" />
+            </button>
+          </div>
+          <div className="flex items-center justify-center mt-3 space-x-2">
+            <div className="w-1 h-1 bg-[#1e3a8a] rounded-full"></div>
+            <p className="text-xs text-slate-500">
+              Powered by Portfoliozz AI • SEBI Registered
+            </p>
+            <div className="w-1 h-1 bg-[#1e3a8a] rounded-full"></div>
           </div>
         </div>
-      )}
-    </div>
-  );
+      </div>
+    )}
+  </div>
+);
 };
 
 export default PortfoliozzChatbot;
