@@ -154,8 +154,24 @@ const PortfoliozzChatbot = () => {
     const dayChange = stockData.dayChange;
     const dayChangePercent = stockData.dayChangePercent;
     
+    // Helper function to format numbers safely
+    const safeFormat = (value, decimals = 2) => {
+      if (value == null || isNaN(value) || value === undefined) return 'N/A';
+      return value.toFixed(decimals);
+    };
+    
+    const safeFormatInteger = (value) => {
+      if (value == null || isNaN(value) || value === undefined || value === 0) return 'N/A';
+      return value.toLocaleString();
+    };
+    
+    const safeFormatCrores = (value) => {
+      if (value == null || isNaN(value) || value === undefined || value === 0) return 'N/A';
+      return (value / 10000000).toFixed(0);
+    };
+    
     // Calculate technical indicators
-    const prices = recentData.map(d => d.close).filter(p => p !== null);
+    const prices = recentData.map(d => d.close).filter(p => p !== null && !isNaN(p));
     const sma20 = prices.length >= 20 ? prices.slice(-20).reduce((a, b) => a + b) / 20 : null;
     const sma50 = prices.length >= 50 ? prices.slice(-50).reduce((a, b) => a + b) / 50 : null;
     
@@ -172,6 +188,7 @@ const PortfoliozzChatbot = () => {
       
       const avgGain = gains / period;
       const avgLoss = losses / period;
+      if (avgLoss === 0) return 100;
       const rs = avgGain / avgLoss;
       return 100 - (100 / (1 + rs));
     };
@@ -179,38 +196,38 @@ const PortfoliozzChatbot = () => {
     const rsi = calculateRSI(prices);
     
     // Support and resistance levels
-    const highs = recentData.map(d => d.high).filter(h => h !== null);
-    const lows = recentData.map(d => d.low).filter(l => l !== null);
-    const resistance = Math.max(...highs);
-    const support = Math.min(...lows);
+    const highs = recentData.map(d => d.high).filter(h => h !== null && !isNaN(h));
+    const lows = recentData.map(d => d.low).filter(l => l !== null && !isNaN(l));
+    const resistance = highs.length > 0 ? Math.max(...highs) : null;
+    const support = lows.length > 0 ? Math.min(...lows) : null;
     
     return `
 REAL-TIME STOCK DATA ANALYSIS FOR ${stockData.symbol}
 
 Current Market Data:
-- Current Price: ₹${currentPrice?.toFixed(2)}
-- Day Change: ₹${dayChange?.toFixed(2)} (${dayChangePercent?.toFixed(2)}%)
-- Previous Close: ₹${stockData.previousClose?.toFixed(2)}
-- 52-Week High: ₹${stockData.fiftyTwoWeekHigh?.toFixed(2)}
-- 52-Week Low: ₹${stockData.fiftyTwoWeekLow?.toFixed(2)}
-- Market Cap: ₹${(stockData.marketCap / 10000000)?.toFixed(0)} Cr
-- Volume: ${stockData.volume?.toLocaleString()}
-- Avg Volume: ${stockData.avgVolume?.toLocaleString()}
+- Current Price: ₹${safeFormat(currentPrice)}
+- Day Change: ₹${safeFormat(dayChange)} (${safeFormat(dayChangePercent)}%)
+- Previous Close: ₹${safeFormat(stockData.previousClose)}
+- 52-Week High: ₹${safeFormat(stockData.fiftyTwoWeekHigh)}
+- 52-Week Low: ₹${safeFormat(stockData.fiftyTwoWeekLow)}
+- Market Cap: ₹${safeFormatCrores(stockData.marketCap)} Cr
+- Volume: ${safeFormatInteger(stockData.volume)}
+- Avg Volume: ${safeFormatInteger(stockData.avgVolume)}
 
 Technical Indicators:
-- 20-Day SMA: ₹${sma20?.toFixed(2)}
-- 50-Day SMA: ₹${sma50?.toFixed(2)}
-- RSI (14): ${rsi?.toFixed(2)}
-- Support Level: ₹${support?.toFixed(2)}
-- Resistance Level: ₹${resistance?.toFixed(2)}
+- 20-Day SMA: ₹${safeFormat(sma20)}
+- 50-Day SMA: ₹${safeFormat(sma50)}
+- RSI (14): ${safeFormat(rsi)}
+- Support Level: ₹${safeFormat(support)}
+- Resistance Level: ₹${safeFormat(resistance)}
 
 Price Trend (Last 10 Days):
 ${recentData.slice(-10).map(d => 
-  `${d.date}: Open ₹${d.open?.toFixed(2)}, High ₹${d.high?.toFixed(2)}, Low ₹${d.low?.toFixed(2)}, Close ₹${d.close?.toFixed(2)}`
+  `${d.date}: Open ₹${safeFormat(d.open)}, High ₹${safeFormat(d.high)}, Low ₹${safeFormat(d.low)}, Close ₹${safeFormat(d.close)}`
 ).join('\n')}
 
-Exchange: ${stockData.exchangeName}
-Currency: ${stockData.currency}
+Exchange: ${stockData.exchangeName || 'N/A'}
+Currency: ${stockData.currency || 'N/A'}
 `;
   };
 
@@ -256,8 +273,8 @@ When provided with real stock data, analyze it comprehensively in this structure
 **INVESTMENT ANALYSIS - [COMPANY NAME]**
 
 **Current Market Position**
-- Use the real-time data provided including current price, market cap, volume
-- Calculate percentage changes and trends from the actual data
+- Use the real-time data provided including current price, market cap, volume and do not show any values if its 0.
+- Calculate percentage changes and trends from the actual data but do not include undefined or NaN responses
 - Comment on trading volume vs average volume
 
 **Technical Analysis (Based on Real Data)**
@@ -268,7 +285,7 @@ When provided with real stock data, analyze it comprehensively in this structure
 - Do not give undefined responses
 
 **Price Action & Momentum**
-- Evaluate the recent price movements
+- Evaluate the recent price movements but do not include undefined or NaN responses
 - Identify if stock is in uptrend, downtrend, or sideways
 - Comment on volume patterns
 - Assess 52-week high/low positioning
@@ -288,6 +305,7 @@ When provided with real stock data, analyze it comprehensively in this structure
 IMPORTANT GUIDELINES:
 - Base ALL analysis on the real stock data provided
 - Do not give undefined responses
+- Do not give NaN responses
 - Give specific price levels for entry, stop-loss, and targets
 - Use actual technical indicators in your reasoning
 - Provide actionable insights based on current market data
