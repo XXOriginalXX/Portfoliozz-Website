@@ -58,7 +58,8 @@ const PortfoliozzChatbot = () => {
   }, [isOpen]);
 
   // Enhanced company name extraction
-  const extractCompanyFromQuery = (message) => {
+  // 1. Enhanced extractCompanyFromQuery function
+const extractCompanyFromQuery = (message) => {
   const lowerMessage = message.toLowerCase();
   
   // First, check for direct company name matches
@@ -90,6 +91,9 @@ const PortfoliozzChatbot = () => {
     
     // Company name at start of message
     /^([A-Za-z\s&'.-]{3,}?)(?:\s+(?:stock|share|performance|analysis|data|results|quarterly|financials|going|doing|opinion|view|thoughts?|recommendation))/i,
+    
+    // NEW: Direct company mentions with buying/selling
+    /(?:talk about|opinion|view|thoughts?|analysis)\s+([A-Za-z\s&'.-]+?)\s+(?:with|about|regarding|for|stock|share|buying|selling)/i,
   ];
   
   for (const pattern of patterns) {
@@ -108,7 +112,8 @@ const PortfoliozzChatbot = () => {
         'latest', 'recent', 'current', 'today', 'yesterday', 'tomorrow', 'going', 'doing',
         'opinion', 'view', 'analysis', 'thoughts', 'recommendation', 'suggestion', 'advice',
         'tell', 'me', 'about', 'on', 'regarding', 'for', 'of', 'analyze', 'analyse',
-        'buy', 'sell', 'hold', 'invest', 'investment', 'purchase', 'get', 'take'
+        'buy', 'sell', 'hold', 'invest', 'investment', 'purchase', 'get', 'take', 'buying', 'selling',
+        'with', 'talk'
       ];
       
       // Remove exclude words
@@ -148,10 +153,11 @@ const searchStocksByWords = async (message) => {
     'this', 'that', 'these', 'those', 'and', 'or', 'but', 'so', 'if', 'then', 'now',
     'latest', 'recent', 'current', 'today', 'yesterday', 'tomorrow', 'going', 'doing',
     'opinion', 'view', 'thoughts', 'recommendation', 'suggestion', 'advice',
-    'tell', 'me', 'about', 'on', 'regarding', 'for', 'of', 'analyze', 'analyse'
+    'tell', 'me', 'about', 'on', 'regarding', 'for', 'of', 'analyze', 'analyse',
+    'buying', 'selling', 'with', 'talk'
   ];
   
-  // Filter meaningful words
+  // Filter meaningful words and also try combinations
   const meaningfulWords = words.filter(word => 
     word.length > 2 && 
     !excludeWords.includes(word) &&
@@ -160,7 +166,7 @@ const searchStocksByWords = async (message) => {
   
   console.log('Meaningful words to search:', meaningfulWords);
   
-  // Try to search for each meaningful word
+  // First try individual words
   for (const word of meaningfulWords) {
     try {
       const results = await searchStocks(word);
@@ -174,11 +180,27 @@ const searchStocksByWords = async (message) => {
     }
   }
   
+  // Then try word combinations (2-word combinations)
+  for (let i = 0; i < meaningfulWords.length - 1; i++) {
+    const combination = meaningfulWords[i] + ' ' + meaningfulWords[i + 1];
+    try {
+      const results = await searchStocks(combination);
+      if (results.length > 0) {
+        console.log(`Found results for combination "${combination}":`, results);
+        return { word: combination, results };
+      }
+    } catch (error) {
+      console.log(`No results for combination "${combination}"`);
+      continue;
+    }
+  }
+  
   return null;
 };
 
   // Search for stocks using Yahoo Finance API
-  const searchStocks = async (query) => {
+  // Search for stocks using Yahoo Finance API - NSE ONLY
+const searchStocks = async (query) => {
   if (!query || query.length < 2) return [];
   
   try {
@@ -191,10 +213,8 @@ const searchStocksByWords = async (message) => {
       query + ' tech',
       query + ' stock',
       query + '.NS',
-      query + '.BO',
       // Handle specific cases
       query.replace(/\s+tech$|technologies$/i, ' Technologies'),
-      
     ];
     
     for (const searchQuery of searchQueries) {
@@ -218,7 +238,7 @@ const searchStocksByWords = async (message) => {
         const data = JSON.parse(responseData.contents);
         
         if (data.quotes && data.quotes.length > 0) {
-          // Enhanced filtering for Indian stocks with fuzzy matching
+          // MODIFIED: Filter for NSE stocks ONLY
           const filteredResults = data.quotes
             .filter((quote) => {
               const symbol = (quote.symbol || '').toUpperCase();
@@ -227,19 +247,13 @@ const searchStocksByWords = async (message) => {
               const longName = (quote.longname || '').toLowerCase();
               const shortName = (quote.shortname || '').toLowerCase();
               
-              // Check for Indian exchanges and markets
-              const isIndianStock = (
+              // Check for NSE stocks ONLY (removed BSE filtering)
+              const isNSEStock = (
                 exchange === 'NSI' || 
-                exchange === 'BSE' || 
                 exchange === 'NSE' ||
                 symbol.includes('.NS') ||
-                symbol.includes('.BO') ||
                 market === 'in_market' ||
-                market.includes('india') ||
-                longName.includes('limited') ||
-                longName.includes('ltd') ||
-                shortName.includes('limited') ||
-                shortName.includes('ltd')
+                market.includes('india')
               );
               
               // Enhanced name matching
@@ -250,7 +264,10 @@ const searchStocksByWords = async (message) => {
                 symbol.toLowerCase().includes(queryLower.replace(/\s+/g, ''))
               );
               
-              return isIndianStock && nameMatch && quote.quoteType !== 'CRYPTOCURRENCY';
+              // Additional NSE validation - exclude BSE symbols
+              const isNotBSE = !symbol.includes('.BO');
+              
+              return isNSEStock && nameMatch && isNotBSE && quote.quoteType !== 'CRYPTOCURRENCY';
             })
             .map((quote) => ({
               symbol: quote.symbol,
@@ -278,7 +295,6 @@ const searchStocksByWords = async (message) => {
     return [];
   }
 };
-
 
 
   // Fetch real stock data using Yahoo Finance API
@@ -592,6 +608,7 @@ Remember: You can answer ANY question about Indian companies - quarterly results
     if (isCompanyQuery) {
       let companyToSearch = extractedCompany;
       let searchResults = [];
+      let searchMethod = 'pattern';
       
       // If no company extracted using patterns, try word-by-word search
       if (!companyToSearch) {
@@ -600,7 +617,7 @@ Remember: You can answer ANY question about Indian companies - quarterly results
         // Show searching message
         const searchingMessage = {
           id: messages.length + Date.now(),
-          text: `🔍 Analyzing your query for stock mentions...`,
+          text: `🔍 Analyzing each word in your query for stock mentions...`,
           isBot: true,
           timestamp: new Date(),
           isLoading: true
@@ -612,6 +629,8 @@ Remember: You can answer ANY question about Indian companies - quarterly results
         if (wordSearchResult) {
           companyToSearch = wordSearchResult.word;
           searchResults = wordSearchResult.results;
+          searchMethod = 'word-search';
+          console.log(`Found company "${companyToSearch}" using word search`);
         }
         
         // Remove searching message
@@ -641,18 +660,15 @@ Remember: You can answer ANY question about Indian companies - quarterly results
           }
           
           if (searchResults.length === 0) {
-            return `❌ I couldn't find "${companyToSearch}" in Indian stock markets.
+            // Enhanced error message with better suggestions
+            return `❌ I couldn't find "${companyToSearch}" in Indian stock markets after searching each word individually.
 
-💡 Please try with:
-• Exact company name: "HCL Technologies", "Tata Consultancy Services"
-• Stock symbols: "HCLTECH", "TCS", "RELIANCE"
-• Common names: "HCL Tech", "Reliance Industries"
+💡 Please try with exact company names or symbols:
+• IT Companies: "TCS", "Infosys", "HCL Technologies", "Wipro", "Tech Mahindra"
+• Banking: "HDFC Bank", "ICICI Bank", "SBI", "Axis Bank", "Kotak Bank"
+• Other Popular: "Reliance", "Tata Motors", "Asian Paints", "ITC", "Maruti Suzuki"
 
-🔥 Popular companies I can analyze:
-• IT: TCS, Infosys, HCL Tech, Wipro, Tech Mahindra
-• Banking: HDFC Bank, ICICI Bank, SBI, Axis Bank
-• Auto: Maruti Suzuki, Tata Motors, Bajaj Auto
-• FMCG: HUL, ITC, Nestle India, Asian Paints
+🔍 Alternative: Try using stock symbols like "HCLTECH", "RELIANCE.NS", "TCS.NS"
 
 📱 For immediate assistance: WhatsApp 7592833517`;
           }
@@ -663,7 +679,7 @@ Remember: You can answer ANY question about Indian companies - quarterly results
           // Show data fetching message
           const fetchingMessage = {
             id: messages.length + Date.now(),
-            text: `✅ Found ${selectedStock.name} (${selectedStock.symbol})\n📊 Fetching real-time market data...`,
+            text: `✅ Found ${selectedStock.name} (${selectedStock.symbol}) using ${searchMethod === 'word-search' ? 'word-by-word search' : 'pattern matching'}\n📊 Fetching real-time market data...`,
             isBot: true,
             timestamp: new Date(),
             isLoading: true
@@ -713,17 +729,20 @@ This could be due to:
 📱 For immediate help: WhatsApp 7592833517`;
         }
       } else {
+        // Enhanced fallback message
         return `🤖 I'd love to help with Indian stock analysis!
 
-Please specify which company you want to know about:
+I tried to find a company name in your message but couldn't identify a specific stock. Please specify which company you want to know about:
 
 💡 Try asking:
-• "What's your opinion on HCL Technologies?"
+• "What's your opinion on Cyient?"
+• "Talk about HCL Technologies with buying opinion"
 • "How is Reliance Industries performing?"
 • "Tell me about TCS stock"
-• "What do you think about HDFC Bank?"
 
-🎯 I can provide real-time data analysis, opinions, and insights for any Indian listed company.`;
+🎯 I can provide real-time data analysis, opinions, and insights for any Indian listed company.
+
+📱 Need help? WhatsApp 7592833517`;
       }
     } else {
       // General query handling
@@ -794,6 +813,7 @@ If appropriate, guide the user on how they can get real-time company analysis. B
 I'm here to help with Indian stock market analysis, company insights, and investment guidance!`;
   }
 };
+
 
 
 const determineQueryType = (message) => {
