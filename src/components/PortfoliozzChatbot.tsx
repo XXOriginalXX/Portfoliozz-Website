@@ -61,29 +61,35 @@ const PortfoliozzChatbot = () => {
   const extractCompanyFromQuery = (message) => {
   const lowerMessage = message.toLowerCase();
   
-  // First, check for direct company name matches (most reliable)
+  // First, check for direct company name matches
   for (const company of POPULAR_COMPANIES) {
     if (lowerMessage.includes(company.toLowerCase())) {
       return company;
     }
   }
   
-  // Enhanced pattern-based extraction with more comprehensive patterns
+  // Enhanced pattern-based extraction with more flexible patterns
   const patterns = [
+    // Opinion/analysis patterns
+    /(?:opinion|view|analysis|thoughts?|recommendation|suggest(?:ion)?|advice)\s+(?:about|on|regarding|for|of)\s+([A-Za-z\s&'.-]+?)(?:\s|$|[?.!])/i,
+    
+    // What about / How about patterns
+    /(?:what|how)\s+about\s+([A-Za-z\s&'.-]+?)(?:\s+(?:stock|share|company)|[?.!]|\s|$)/i,
+    
+    // Company name with question words
+    /(?:how|what|tell me)\s+(?:is|about|regarding)\s+([A-Za-z\s&'.-]+?)(?:\s+(?:stock|share|company|performing|doing|going)|[?.!]|\s|$)/i,
+    
     // Direct mentions with stock/share
     /(?:about|regarding|on|for|of|analyze|analyse|tell me about|how is|what about)\s+([A-Za-z\s&'.-]+?)(?:\s+(?:stock|share|company|performance|quarterly|results|financials|going|doing)|\s*[?.!]|$)/i,
     
     // Company name followed by stock/share
     /([A-Za-z\s&'.-]+?)\s+(?:stock|share|equity|performance|analysis|data|results|quarterly|financials|going|doing)/i,
     
-    // How is/has pattern
-    /(?:how\s+(?:is|has|did|does))\s+([A-Za-z\s&'.-]+?)(?:\s+(?:performed|performing|doing|going|stock|share|company)|'s|\s|$)/i,
+    // Simple company name extraction (more flexible)
+    /^(?:what|how|tell|analyze|analyse|opinion|view|thoughts?|recommendation|suggest(?:ion)?|advice)?\s*(?:is|about|on|regarding|for|of)?\s*([A-Za-z\s&'.-]{3,}?)(?:\s+(?:stock|share|company|performance|opinion|view|analysis|thoughts?|recommendation|suggest(?:ion)?|advice)|[?.!]|$)/i,
     
-    // Quarterly/results pattern
-    /(?:quarterly|results|financials|performance|analysis|data)\s+(?:of|for)\s+([A-Za-z\s&'.-]+)/i,
-    
-    // Simple company name at start
-    /^([A-Za-z\s&'.-]{3,}?)(?:\s+(?:stock|share|performance|analysis|data|results|quarterly|financials|going|doing))/i,
+    // Company name at start of message
+    /^([A-Za-z\s&'.-]{3,}?)(?:\s+(?:stock|share|performance|analysis|data|results|quarterly|financials|going|doing|opinion|view|thoughts?|recommendation))/i,
   ];
   
   for (const pattern of patterns) {
@@ -99,26 +105,72 @@ const PortfoliozzChatbot = () => {
         'could', 'may', 'might', 'must', 'can', 'performance', 'performed', 'performing',
         'over', 'last', 'year', 'years', 'month', 'months', 'quarter', 'quarters', 'past',
         'this', 'that', 'these', 'those', 'and', 'or', 'but', 'so', 'if', 'then', 'now',
-        'latest', 'recent', 'current', 'today', 'yesterday', 'tomorrow', 'going', 'doing'
+        'latest', 'recent', 'current', 'today', 'yesterday', 'tomorrow', 'going', 'doing',
+        'opinion', 'view', 'analysis', 'thoughts', 'recommendation', 'suggestion', 'advice',
+        'tell', 'me', 'about', 'on', 'regarding', 'for', 'of', 'analyze', 'analyse',
+        'buy', 'sell', 'hold', 'invest', 'investment', 'purchase', 'get', 'take'
       ];
       
-      // Remove exclude words from the end
+      // Remove exclude words
       const words = extractedName.split(' ');
       const filteredWords = words.filter(word => 
-        !excludeWords.includes(word.toLowerCase())
+        !excludeWords.includes(word.toLowerCase()) && 
+        word.length > 1
       );
       
       if (filteredWords.length > 0) {
         extractedName = filteredWords.join(' ');
+        
+        // Additional validation
+        if (extractedName.length > 1 && 
+            !excludeWords.includes(extractedName.toLowerCase()) &&
+            !/^\d+$/.test(extractedName) && 
+            !/^[0-9\s]+$/.test(extractedName)) {
+          return extractedName;
+        }
       }
-      
-      // Validate extracted name
-      if (extractedName.length > 1 && 
-          !excludeWords.includes(extractedName.toLowerCase()) &&
-          !/^\d+$/.test(extractedName) && 
-          !/^[0-9\s]+$/.test(extractedName)) {
-        return extractedName;
+    }
+  }
+  
+  return null;
+};
+
+// NEW: Fallback function to search for stocks by individual words
+const searchStocksByWords = async (message) => {
+  const words = message.toLowerCase().split(' ');
+  const excludeWords = [
+    'do', 'i', 'buy', 'sell', 'hold', 'invest', 'investment', 'purchase', 'get', 'take',
+    'stock', 'share', 'company', 'market', 'price', 'value', 'analysis', 'report', 'news',
+    'the', 'what', 'how', 'when', 'where', 'why', 'which', 'has', 'have', 'had', 'is',
+    'are', 'was', 'were', 'been', 'being', 'does', 'did', 'will', 'would', 'should',
+    'could', 'may', 'might', 'must', 'can', 'performance', 'performed', 'performing',
+    'over', 'last', 'year', 'years', 'month', 'months', 'quarter', 'quarters', 'past',
+    'this', 'that', 'these', 'those', 'and', 'or', 'but', 'so', 'if', 'then', 'now',
+    'latest', 'recent', 'current', 'today', 'yesterday', 'tomorrow', 'going', 'doing',
+    'opinion', 'view', 'thoughts', 'recommendation', 'suggestion', 'advice',
+    'tell', 'me', 'about', 'on', 'regarding', 'for', 'of', 'analyze', 'analyse'
+  ];
+  
+  // Filter meaningful words
+  const meaningfulWords = words.filter(word => 
+    word.length > 2 && 
+    !excludeWords.includes(word) &&
+    !/^\d+$/.test(word)
+  );
+  
+  console.log('Meaningful words to search:', meaningfulWords);
+  
+  // Try to search for each meaningful word
+  for (const word of meaningfulWords) {
+    try {
+      const results = await searchStocks(word);
+      if (results.length > 0) {
+        console.log(`Found results for word "${word}":`, results);
+        return { word, results };
       }
+    } catch (error) {
+      console.log(`No results for word "${word}"`);
+      continue;
     }
   }
   
@@ -130,12 +182,19 @@ const PortfoliozzChatbot = () => {
   if (!query || query.length < 2) return [];
   
   try {
-    // Try multiple search approaches
+    // Enhanced search queries with better matching
     const searchQueries = [
       query,
+      query + ' limited',
+      query + ' ltd',
+      query + ' technologies',
+      query + ' tech',
       query + ' stock',
       query + '.NS',
-      query + '.BO'
+      query + '.BO',
+      // Handle specific cases
+      query.replace(/\s+tech$|technologies$/i, ' Technologies'),
+      
     ];
     
     for (const searchQuery of searchQueries) {
@@ -159,7 +218,7 @@ const PortfoliozzChatbot = () => {
         const data = JSON.parse(responseData.contents);
         
         if (data.quotes && data.quotes.length > 0) {
-          // Enhanced filtering for Indian stocks
+          // Enhanced filtering for Indian stocks with fuzzy matching
           const filteredResults = data.quotes
             .filter((quote) => {
               const symbol = (quote.symbol || '').toUpperCase();
@@ -183,7 +242,15 @@ const PortfoliozzChatbot = () => {
                 shortName.includes('ltd')
               );
               
-              return isIndianStock && quote.quoteType !== 'CRYPTOCURRENCY';
+              // Enhanced name matching
+              const queryLower = query.toLowerCase();
+              const nameMatch = (
+                longName.includes(queryLower) ||
+                shortName.includes(queryLower) ||
+                symbol.toLowerCase().includes(queryLower.replace(/\s+/g, ''))
+              );
+              
+              return isIndianStock && nameMatch && quote.quoteType !== 'CRYPTOCURRENCY';
             })
             .map((quote) => ({
               symbol: quote.symbol,
@@ -467,7 +534,8 @@ Remember: You can answer ANY question about Indian companies - quarterly results
     'sector', 'industry', 'competition', 'management', 'debt', 'cash flow', 'balance sheet',
     'PE ratio', 'PB ratio', 'ROE', 'ROA', 'margin', 'EBITDA', 'net income', 'performed', 'doing',
     'over the last', 'in the past', 'year', 'years', 'month', 'months', 'quarter', 'data',
-    'latest', 'recent', 'current', 'today', 'financial', 'report', 'earning', 'trading', 'going'
+    'latest', 'recent', 'current', 'today', 'financial', 'report', 'earning', 'trading', 'going',
+    'opinion', 'view', 'thoughts', 'suggest', 'advice', 'recommendation', 'analysis'
   ];
   
   const lowerMessage = message.toLowerCase();
@@ -480,8 +548,13 @@ Remember: You can answer ANY question about Indian companies - quarterly results
     lowerMessage.includes(company.toLowerCase())
   );
   
-  // Enhanced question patterns
+  // Enhanced question patterns including opinion-based queries
   const companyQuestionPatterns = [
+    // Opinion/analysis patterns
+    /(?:opinion|view|analysis|thoughts?|recommendation|suggest(?:ion)?|advice)\s+(?:about|on|regarding|for|of)/i,
+    /(?:what|how)\s+(?:is|about|do you think|are your thoughts)/i,
+    
+    // Traditional patterns
     /how\s+(?:is|has|did|does).+(?:stock|share|company|performed|doing|performing|going)/i,
     /what.+(?:stock|share|company|performance|quarterly|results|price|value)/i,
     /tell me about.+/i,
@@ -490,9 +563,13 @@ Remember: You can answer ANY question about Indian companies - quarterly results
     /.+(?:stock|share).+(?:year|month|quarter|performance|going|doing)/i,
     /.+(?:quarterly|results|financials|earnings)\s*(?:of|for)?\s*.+/i,
     /(?:latest|recent|current).+(?:stock|share|company|performance|data|result|price)/i,
+    
     // More flexible patterns
     /^[A-Za-z\s&'.-]+\s+(?:stock|share|performance|analysis|data|results|quarterly|financials|going|doing)/i,
-    /(?:hcl|tcs|reliance|infosys|wipro|hdfc|icici|sbi|bajaj|maruti|asian paints|itc)/i // Direct company name patterns
+    /(?:hcl|tcs|reliance|infos?ys|wipro|hdfc|icici|sbi|bajaj|maruti|asian paints|itc)/i,
+    
+    // Any company name followed by relevant words
+    /.+(?:tech|technologies|industries|limited|ltd|bank|motors|systems|solutions)/i
   ];
   
   const hasCompanyQuestionPattern = companyQuestionPatterns.some(pattern => 
@@ -507,43 +584,63 @@ Remember: You can answer ANY question about Indian companies - quarterly results
     const isCompanyQuery = detectCompanyQuery(userMessage);
     const extractedCompany = extractCompanyFromQuery(userMessage);
     
-    console.log('Query Analysis:', { isCompanyQuery, extractedCompany }); // Debug log
+    console.log('Query Analysis:', { isCompanyQuery, extractedCompany, originalMessage: userMessage });
     
     let prompt;
     let stockDataText = "";
     
     if (isCompanyQuery) {
       let companyToSearch = extractedCompany;
+      let searchResults = [];
       
-      // If no company extracted, try to find any meaningful company name
+      // If no company extracted using patterns, try word-by-word search
       if (!companyToSearch) {
-        // Look for any potential company names in the message
-        const words = userMessage.split(' ').filter(word => 
-          word.length > 2 && 
-          !['stock', 'share', 'company', 'performance', 'analysis', 'data', 'results', 'the', 'and', 'for', 'how', 'what', 'over', 'last', 'year', 'years', 'month', 'months', 'going', 'doing'].includes(word.toLowerCase())
-        );
-        companyToSearch = words.join(' ').trim();
+        console.log('No company found in patterns, trying word-by-word search...');
+        
+        // Show searching message
+        const searchingMessage = {
+          id: messages.length + Date.now(),
+          text: `🔍 Analyzing your query for stock mentions...`,
+          isBot: true,
+          timestamp: new Date(),
+          isLoading: true
+        };
+        setMessages(prev => [...prev, searchingMessage]);
+        
+        const wordSearchResult = await searchStocksByWords(userMessage);
+        
+        if (wordSearchResult) {
+          companyToSearch = wordSearchResult.word;
+          searchResults = wordSearchResult.results;
+        }
+        
+        // Remove searching message
+        setMessages(prev => prev.filter(msg => !msg.isLoading));
       }
       
+      // If we found a company to search, proceed
       if (companyToSearch && companyToSearch.length > 1) {
         try {
-          // Show searching message
-          const searchingMessage = {
-            id: messages.length + Date.now(),
-            text: `🔍 Searching for "${companyToSearch}" in Indian stock markets...`,
-            isBot: true,
-            timestamp: new Date(),
-            isLoading: true
-          };
-          setMessages(prev => [...prev, searchingMessage]);
-          
-          // Search for the company
-          const searchResults = await searchStocks(companyToSearch);
-          
+          // If we don't have search results yet, search normally
           if (searchResults.length === 0) {
+            // Show searching message
+            const searchingMessage = {
+              id: messages.length + Date.now(),
+              text: `🔍 Searching for "${companyToSearch}" in Indian stock markets...`,
+              isBot: true,
+              timestamp: new Date(),
+              isLoading: true
+            };
+            setMessages(prev => [...prev, searchingMessage]);
+            
+            // Search for the company
+            searchResults = await searchStocks(companyToSearch);
+            
             // Remove searching message
             setMessages(prev => prev.filter(msg => !msg.isLoading));
-            
+          }
+          
+          if (searchResults.length === 0) {
             return `❌ I couldn't find "${companyToSearch}" in Indian stock markets.
 
 💡 Please try with:
@@ -563,12 +660,15 @@ Remember: You can answer ANY question about Indian companies - quarterly results
           // Use the most relevant search result
           const selectedStock = searchResults[0];
           
-          // Update searching message
-          setMessages(prev => prev.map(msg => 
-            msg.isLoading ? 
-              {...msg, text: `✅ Found ${selectedStock.name} (${selectedStock.symbol})\n📊 Fetching real-time market data...`} : 
-              msg
-          ));
+          // Show data fetching message
+          const fetchingMessage = {
+            id: messages.length + Date.now(),
+            text: `✅ Found ${selectedStock.name} (${selectedStock.symbol})\n📊 Fetching real-time market data...`,
+            isBot: true,
+            timestamp: new Date(),
+            isLoading: true
+          };
+          setMessages(prev => [...prev, fetchingMessage]);
           
           // Fetch real stock data
           const fetchedStockData = await fetchRealStockData(selectedStock.symbol);
@@ -578,24 +678,25 @@ Remember: You can answer ANY question about Indian companies - quarterly results
           // Remove loading message
           setMessages(prev => prev.filter(msg => !msg.isLoading));
           
+          // Determine the type of query and tailor response accordingly
+          const queryType = determineQueryType(userMessage);
+          
           prompt = `${portfoliozzContext}
 
 User Query: ${userMessage}
+Query Type: ${queryType}
 Company Found: ${selectedStock.name} (${selectedStock.symbol})
 
 REAL-TIME STOCK DATA PROVIDED:
 ${stockDataText}
 
-Based on the user's question about ${selectedStock.name}, provide a comprehensive analysis using the real-time market data above. Address their specific query whether it's about:
-- Quarterly results and financial performance
-- Stock price movements and technical analysis  
-- Company fundamentals and business performance
-- Investment recommendations and outlook
-- Market sentiment and trading signals
+Based on the user's ${queryType} query about ${selectedStock.name}, provide a focused response that directly addresses what they asked for:
 
-Give detailed insights with specific numbers from the data. Be conversational but professional. Don't use markdown formatting - use plain text with emojis and clear formatting.
+${getQuerySpecificInstructions(queryType)}
 
-Provide actionable insights based on the current market data and technical indicators.`;
+Use the real-time market data above to support your response. Be conversational but professional. Don't use markdown formatting - use plain text with emojis and clear formatting.
+
+Focus specifically on what the user asked for rather than providing a generic analysis.`;
         } catch (error) {
           console.error('Error in stock analysis:', error);
           // Remove loading message
@@ -617,12 +718,12 @@ This could be due to:
 Please specify which company you want to know about:
 
 💡 Try asking:
-• "How is HCL Technologies performing?"
-• "Tell me about Reliance Industries quarterly results"
-• "TCS stock analysis"
-• "What's the latest on HDFC Bank?"
+• "What's your opinion on HCL Technologies?"
+• "How is Reliance Industries performing?"
+• "Tell me about TCS stock"
+• "What do you think about HDFC Bank?"
 
-🎯 I can provide real-time data for any Indian listed company including price movements, technical indicators, financial insights, and investment recommendations.`;
+🎯 I can provide real-time data analysis, opinions, and insights for any Indian listed company.`;
       }
     } else {
       // General query handling
@@ -678,10 +779,6 @@ If appropriate, guide the user on how they can get real-time company analysis. B
         .replace(/^\s*\d+\.\s/gm, '')     
         .trim();
       
-      // Add disclaimer for stock analysis
-      if (isCompanyQuery && extractedCompany && stockDataText) {
-        botResponse += "\n\n⚠️ DISCLAIMER: This analysis uses real-time market data and technical indicators. Stock investments are subject to market risks. Please consult a financial advisor and read all documents before investing. Past performance doesn't guarantee future results.";
-      }
       
       return botResponse;
     } else {
@@ -698,6 +795,52 @@ I'm here to help with Indian stock market analysis, company insights, and invest
   }
 };
 
+
+const determineQueryType = (message) => {
+  const lowerMessage = message.toLowerCase();
+  
+  if (lowerMessage.includes('opinion') || lowerMessage.includes('think') || lowerMessage.includes('view') || lowerMessage.includes('thoughts')) {
+    return 'opinion';
+  } else if (lowerMessage.includes('recommend') || lowerMessage.includes('suggest') || lowerMessage.includes('advice') || lowerMessage.includes('buy') || lowerMessage.includes('sell')) {
+    return 'recommendation';
+  } else if (lowerMessage.includes('quarter') || lowerMessage.includes('result') || lowerMessage.includes('earning') || lowerMessage.includes('financial')) {
+    return 'financial_performance';
+  } else if (lowerMessage.includes('how') && (lowerMessage.includes('perform') || lowerMessage.includes('doing') || lowerMessage.includes('going'))) {
+    return 'performance';
+  } else if (lowerMessage.includes('analysis') || lowerMessage.includes('analyze') || lowerMessage.includes('analyse')) {
+    return 'analysis';
+  } else if (lowerMessage.includes('future') || lowerMessage.includes('prospect') || lowerMessage.includes('outlook')) {
+    return 'future_outlook';
+  } else {
+    return 'general_inquiry';
+  }
+};
+
+// Helper function to provide query-specific instructions
+const getQuerySpecificInstructions = (queryType) => {
+  switch (queryType) {
+    case 'opinion':
+      return `The user is asking for your opinion. Provide a balanced view based on the current market data, technical indicators, and fundamental analysis. Include both positive and negative aspects, and explain your reasoning using the provided data.`;
+    
+    case 'recommendation':
+      return `The user wants investment recommendations. Based on the current data, technical signals, and market conditions, provide clear guidance on whether this could be a buy, hold, or avoid situation. Support your recommendation with specific data points.`;
+    
+    case 'financial_performance':
+      return `Focus on the company's financial metrics, quarterly performance, revenue trends, profitability, and key financial ratios. Use the market data to explain recent financial performance.`;
+    
+    case 'performance':
+      return `Explain how the company has been performing recently using the stock price data, volume trends, technical indicators, and market sentiment. Include both short-term and medium-term performance analysis.`;
+    
+    case 'analysis':
+      return `Provide a comprehensive analysis covering technical indicators, price trends, market sentiment, support/resistance levels, and key metrics from the data provided.`;
+    
+    case 'future_outlook':
+      return `Based on current market data, technical indicators, and performance trends, discuss the potential future outlook for this stock. Include both opportunities and risks.`;
+    
+    default:
+      return `Address the user's specific question about this company using the real-time market data and provide relevant insights based on what they asked.`;
+  }
+};
   const handleSendMessage = async () => {
     if (!inputText.trim() || isLoading) return;
 
